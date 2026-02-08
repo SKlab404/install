@@ -212,47 +212,8 @@
         }
         setInterval(drawMatrix, 50);
 
-        // AUDIO SYSTEM
+        // AUDIO SYSTEM (HOVER & CLICK FX)
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        // --- MÚSICA DE INTRO (SYNTHWAVE ARPEGGIO) ---
-        function playIntroMusic() {
-            if(audioCtx.state==='suspended') audioCtx.resume();
-            
-            const notes = [293.66, 349.23, 440.00, 587.33, 440.00, 349.23]; // Sequência
-            let time = audioCtx.currentTime;
-            
-            for (let loop = 0; loop < 3; loop++) {
-                notes.forEach((freq) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    const filter = audioCtx.createBiquadFilter();
-
-                    osc.type = 'sawtooth';
-                    osc.frequency.value = freq;
-                    filter.type = 'lowpass';
-                    filter.frequency.value = 1200;
-
-                    gain.gain.setValueAtTime(0, time);
-                    gain.gain.linearRampToValueAtTime(0.04, time + 0.05); // Volume baixo
-                    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
-
-                    osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
-                    osc.start(time); osc.stop(time + 0.2);
-                    time += 0.15;
-                });
-            }
-            // Bass Drop Final
-            setTimeout(() => {
-                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 1.5);
-                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 1.5);
-            }, 2500);
-        }
 
         function playHoverSound() {
             if(audioCtx.state==='suspended') audioCtx.resume();
@@ -271,14 +232,23 @@
             o.start(); o.stop(audioCtx.currentTime+0.2);
         }
 
+        // --- MÚSICA MP3 NA INTRO ---
+        function playIntroMusic() {
+            // Toca o arquivo 'intro.mp3' que deves colocar na pasta do GitHub
+            const audio = new Audio('intro.mp3');
+            audio.volume = 0.5; // Ajusta o volume (0.0 a 1.0)
+            audio.play().catch(e => console.log("Audio play failed (user didn't click yet)"));
+        }
+
         // --- SISTEMA DE START ---
         let systemStarted = false;
         function startSystem() {
             if(systemStarted) return;
             systemStarted = true;
-            playIntroMusic(); // Toca a música
+            
+            playIntroMusic(); // Dispara o MP3
+            
             const intro = document.getElementById('intro-overlay');
-            // Abre o ecrã logo após iniciar a música
             setTimeout(() => {
                 intro.style.opacity = '0';
                 setTimeout(() => { intro.style.display = 'none'; }, 1000);
