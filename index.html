@@ -50,8 +50,9 @@
         }
         .intro-hint {
             color: #444; font-family: 'VT323'; font-size: 14px; margin-top: 15px;
-            animation: blink 1s infinite;
+            animation: blink 1s infinite; cursor: pointer;
         }
+        .intro-hint:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
         /* --- TERMINAL BAR --- */
         .terminal-bar {
@@ -71,7 +72,7 @@
             text-shadow: 2px 2px #d600ff; text-align: center;
         }
 
-        /* --- COMING SOON VIDEO PLACEHOLDER --- */
+        /* --- COMING SOON VIDEO --- */
         .video-placeholder {
             width: 100%; max-width: 600px; height: 340px;
             background: #050505;
@@ -80,22 +81,17 @@
             margin-bottom: 30px; box-shadow: 0 0 20px rgba(0,0,0,0.8);
             position: relative; overflow: hidden;
         }
-        
-        /* Grid Effect Background */
         .video-placeholder::before {
             content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background-image: linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
             linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
             background-size: 20px 20px; opacity: 0.3;
         }
-
-        /* Scanning Line */
         .scan-line {
             position: absolute; top: 0; left: 0; width: 100%; height: 2px;
             background: #00ff41; box-shadow: 0 0 10px #00ff41;
             animation: scan 3s linear infinite; opacity: 0.5;
         }
-
         .placeholder-icon { font-size: 48px; color: #333; margin-bottom: 15px; }
         .placeholder-text {
             font-family: 'Orbitron'; font-size: 24px; color: #fff; letter-spacing: 2px;
@@ -123,17 +119,14 @@
         .custom-btn:hover { transform: translateY(-5px); box-shadow: 0 0 25px #00ff41; background: rgba(0, 255, 65, 0.1); }
         .btn-title { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 5px; }
         .btn-desc { font-family: 'VT323'; font-size: 18px; color: #00ff41; }
-        
         .pro-mode { border-color: #d600ff; }
         .pro-mode:hover { box-shadow: 0 0 25px #d600ff; background: rgba(214, 0, 255, 0.1); }
         .pro-mode .btn-desc { color: #d600ff; }
 
-        /* --- FOOTER INSTRUCTIONS --- */
+        /* --- FOOTER --- */
         .instructions {
             color: #666; font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Orbitron';
         }
-
-        /* --- SOCIAL --- */
         .social-dock {
             display: flex; gap: 20px;
             background: rgba(0,0,0,0.6); padding: 15px 30px; border-radius: 50px;
@@ -145,7 +138,6 @@
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes load { 0% { width: 0%; } 100% { width: 100%; } }
         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
-        
         @media (max-width: 700px) { .glitch-text { font-size: 28px; } .control-panel { gap: 15px; } }
     </style>
 </head>
@@ -222,13 +214,44 @@
 
         // AUDIO SYSTEM
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playBootSound() {
+
+        // --- MÚSICA DE INTRO (SYNTHWAVE ARPEGGIO) ---
+        function playIntroMusic() {
             if(audioCtx.state==='suspended') audioCtx.resume();
-            const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
-            o.frequency.setValueAtTime(100, audioCtx.currentTime); o.frequency.linearRampToValueAtTime(600, audioCtx.currentTime+0.5);
-            g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime+0.5);
-            o.start(); o.stop(audioCtx.currentTime+0.5);
+            
+            const notes = [293.66, 349.23, 440.00, 587.33, 440.00, 349.23]; // Sequência
+            let time = audioCtx.currentTime;
+            
+            for (let loop = 0; loop < 3; loop++) {
+                notes.forEach((freq) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    const filter = audioCtx.createBiquadFilter();
+
+                    osc.type = 'sawtooth';
+                    osc.frequency.value = freq;
+                    filter.type = 'lowpass';
+                    filter.frequency.value = 1200;
+
+                    gain.gain.setValueAtTime(0, time);
+                    gain.gain.linearRampToValueAtTime(0.04, time + 0.05); // Volume baixo
+                    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+
+                    osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(time); osc.stop(time + 0.2);
+                    time += 0.15;
+                });
+            }
+            // Bass Drop Final
+            setTimeout(() => {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 1.5);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.5);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+            }, 2500);
         }
 
         function playHoverSound() {
@@ -241,7 +264,6 @@
 
         function updateStatus(msg) {
             document.querySelector('.status-text').innerText = '> SYSTEM: ' + msg;
-            // Click Sound
             if(audioCtx.state==='suspended') audioCtx.resume();
             const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
             o.type='square'; o.frequency.setValueAtTime(200, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime+0.2);
@@ -249,17 +271,19 @@
             o.start(); o.stop(audioCtx.currentTime+0.2);
         }
 
-        // INTRO LOGIC
+        // --- SISTEMA DE START ---
         let systemStarted = false;
         function startSystem() {
             if(systemStarted) return;
             systemStarted = true;
+            playIntroMusic(); // Toca a música
             const intro = document.getElementById('intro-overlay');
-            playBootSound();
-            intro.style.opacity = '0';
-            setTimeout(() => { intro.style.display = 'none'; }, 1000);
+            // Abre o ecrã logo após iniciar a música
+            setTimeout(() => {
+                intro.style.opacity = '0';
+                setTimeout(() => { intro.style.display = 'none'; }, 1000);
+            }, 300);
         }
-        setTimeout(startSystem, 3000);
     </script>
 </body>
 </html>
