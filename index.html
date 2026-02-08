@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🕷️ MARAUDER FLASH TOOL</title>
-    <!-- Ferramenta de Flash ESP -->
+    <!-- ESP Web Tools -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-    <!-- Ícones -->
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
@@ -18,7 +18,7 @@
             color: #00ff41;
             font-family: 'Orbitron', monospace;
             overflow-y: auto;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -27,12 +27,12 @@
         
         canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.15; }
 
-        /* --- TELA DE INTRO (LOADING) --- */
+        /* --- INTRO OVERLAY --- */
         #intro-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 1s ease-out; /* Efeito suave de sumir */
+            transition: opacity 1s ease-out;
         }
         .intro-text {
             font-family: 'VT323', monospace; font-size: 28px; color: #00ff41;
@@ -46,7 +46,7 @@
             position: absolute; top: 0; left: 0; height: 100%; width: 0%;
             background: #00ff41;
             box-shadow: 0 0 10px #00ff41;
-            animation: load 3.5s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards; /* Animação de 3.5s */
+            animation: load 3.0s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
         }
         .intro-hint {
             color: #444; font-family: 'VT323'; font-size: 14px; margin-top: 15px;
@@ -65,30 +65,52 @@
         }
         .status-text { font-family: 'VT323', monospace; font-size: 20px; color: #00ff41; }
         
-        /* --- TÍTULO --- */
+        /* --- TITLE --- */
         .glitch-text {
             font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 20px;
             text-shadow: 2px 2px #d600ff; text-align: center;
         }
 
-        /* --- VÍDEO --- */
-        .video-frame {
-            width: 100%; max-width: 600px;
-            border: 2px solid #333; border-radius: 8px; overflow: hidden;
+        /* --- COMING SOON VIDEO PLACEHOLDER --- */
+        .video-placeholder {
+            width: 100%; max-width: 600px; height: 340px;
+            background: #050505;
+            border: 2px solid #333; border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             margin-bottom: 30px; box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            position: relative;
+            position: relative; overflow: hidden;
         }
-        .video-frame::before {
-            content: "INSTALL_GUIDE.mp4"; position: absolute; top: 5px; left: 10px;
-            font-family: 'VT323'; color: rgba(0,255,65,0.7);
-            background: rgba(0,0,0,0.8); padding: 2px 5px; z-index: 5; pointer-events: none;
+        
+        /* Grid Effect Background */
+        .video-placeholder::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: linear-gradient(rgba(0, 255, 65, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 255, 65, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px; opacity: 0.3;
         }
 
-        /* --- BOTÕES --- */
+        /* Scanning Line */
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: #00ff41; box-shadow: 0 0 10px #00ff41;
+            animation: scan 3s linear infinite; opacity: 0.5;
+        }
+
+        .placeholder-icon { font-size: 48px; color: #333; margin-bottom: 15px; }
+        .placeholder-text {
+            font-family: 'Orbitron'; font-size: 24px; color: #fff; letter-spacing: 2px;
+            text-shadow: 0 0 5px #fff; z-index: 2;
+        }
+        .placeholder-sub {
+            font-family: 'VT323'; font-size: 18px; color: #00ff41; margin-top: 5px; z-index: 2;
+        }
+
+        /* --- BUTTONS --- */
         .control-panel {
             display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 40px;
         }
         esp-web-install-button { display: block !important; }
+        
         .custom-btn {
             background: rgba(0, 20, 0, 0.8);
             border: 2px solid #00ff41;
@@ -101,9 +123,15 @@
         .custom-btn:hover { transform: translateY(-5px); box-shadow: 0 0 25px #00ff41; background: rgba(0, 255, 65, 0.1); }
         .btn-title { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 5px; }
         .btn-desc { font-family: 'VT323'; font-size: 18px; color: #00ff41; }
+        
         .pro-mode { border-color: #d600ff; }
         .pro-mode:hover { box-shadow: 0 0 25px #d600ff; background: rgba(214, 0, 255, 0.1); }
         .pro-mode .btn-desc { color: #d600ff; }
+
+        /* --- FOOTER INSTRUCTIONS --- */
+        .instructions {
+            color: #666; font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Orbitron';
+        }
 
         /* --- SOCIAL --- */
         .social-dock {
@@ -116,11 +144,13 @@
 
         @keyframes blink { 50% { opacity: 0; } }
         @keyframes load { 0% { width: 0%; } 100% { width: 100%; } }
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+        
         @media (max-width: 700px) { .glitch-text { font-size: 28px; } .control-panel { gap: 15px; } }
     </style>
 </head>
 <body>
-    <!-- INTRO OVERLAY (TELA DE CARREGAMENTO) -->
+    <!-- INTRO OVERLAY -->
     <div id="intro-overlay" onclick="startSystem()">
         <div class="intro-text">INITIALIZING SYSTEM...</div>
         <div class="loader-bar"><div class="loader-progress"></div></div>
@@ -135,15 +165,18 @@
         <span class="status-text blink">_</span>
     </div>
 
-    <!-- TÍTULO -->
+    <!-- TITLE -->
     <div class="glitch-text">MARAUDER FLASH TOOL</div>
 
-    <!-- VÍDEO -->
-    <div class="video-frame">
-        <iframe width="100%" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Tutorial" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    <!-- COMING SOON VIDEO PLACEHOLDER -->
+    <div class="video-placeholder">
+        <div class="scan-line"></div>
+        <i class="fas fa-video-slash placeholder-icon"></i>
+        <div class="placeholder-text">VIDEO TUTORIAL</div>
+        <div class="placeholder-sub">// COMING SOON //</div>
     </div>
 
-    <!-- BOTÕES -->
+    <!-- INSTALL BUTTONS -->
     <div class="control-panel">
         <esp-web-install-button manifest="manifest_normal.json">
             <button slot="activate" class="custom-btn" onclick="updateStatus('Launching Standard Protocol...')" onmouseenter="playHoverSound()">
@@ -158,6 +191,11 @@
                 <span class="btn-desc">ESP32-C5 (RISC-V)</span>
             </button>
         </esp-web-install-button>
+    </div>
+
+    <!-- INSTRUCTIONS -->
+    <div class="instructions">
+        ⚠️ CONNECT VIA USB UART. HOLD <strong>BOOT</strong> IF STUCK.
     </div>
 
     <!-- SOCIAL -->
@@ -182,13 +220,12 @@
         }
         setInterval(drawMatrix, 50);
 
-        // SOM (AUDIO CONTEXT)
+        // AUDIO SYSTEM
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
         function playBootSound() {
             if(audioCtx.state==='suspended') audioCtx.resume();
             const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
-            // Som de BOOT (Grave subindo)
             o.frequency.setValueAtTime(100, audioCtx.currentTime); o.frequency.linearRampToValueAtTime(600, audioCtx.currentTime+0.5);
             g.gain.setValueAtTime(0.1, audioCtx.currentTime); g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime+0.5);
             o.start(); o.stop(audioCtx.currentTime+0.5);
@@ -212,21 +249,17 @@
             o.start(); o.stop(audioCtx.currentTime+0.2);
         }
 
-        // --- SISTEMA DE INTRO ---
+        // INTRO LOGIC
         let systemStarted = false;
-
         function startSystem() {
             if(systemStarted) return;
             systemStarted = true;
-            
             const intro = document.getElementById('intro-overlay');
-            playBootSound(); // Toca som de BOOT
+            playBootSound();
             intro.style.opacity = '0';
             setTimeout(() => { intro.style.display = 'none'; }, 1000);
         }
-
-        // Auto-start após 3.5s (tempo da barra encher)
-        setTimeout(startSystem, 3500);
+        setTimeout(startSystem, 3000);
     </script>
 </body>
 </html>
