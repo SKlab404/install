@@ -1,14 +1,6 @@
 {
-  "name": "Marauder 5G (ESP32-C5)",
-  "version": "1.8.5",
-  "builds": [
-    {
-      "chipFamily": "ESP32-C5",
-      "parts": [
-        { "path": "bootloader.bin", "offset": 8192 },
-        { "path": "partitions.bin", "offset": 32768 },
-        { "path": "esp32_marauder_v1_8_5_esp32c5devkitc1.bin", "offset": 65536 }
-      ]
-    }
-  ]
+  "name": "Marauder C5",
+  "version": "Latest",
+  "new_install_prompt_erase": true,
+  "builds": [ { "chipFamily": "ESP32", "parts": [ { "path": "marauder/marauder_c5.bin", "offset": 0 } ] } ]
 }
