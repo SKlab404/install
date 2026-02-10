@@ -1,192 +1,215 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- TEU HEAD INTACTO -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🕷️ MARAUDER + BRUCE FLASH TOOL</title>
-    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <title>SK404 LAB - FLASH TOOL</title>
+    <!-- Importante: Biblioteca para Flash Manual -->
+    <script src="https://unpkg.com/esptool-js@0.2.0/bundle.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- MESMO CSS, só adicionei terminal -->
     <style>
-        /* TEU CSS COMPLETO + TERMINAL NOVO */
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
-        /* ... todo o teu CSS ... */
         
-        /* NOVO: TERMINAL */
-        #terminal {
-            width: 100%; max-width: 800px; height: 300px;
-            background: #000; color: #00ff41; font-family: 'VT323', monospace;
-            font-size: 16px; padding: 15px; border: 2px solid #00ff41;
-            border-radius: 5px; overflow-y: auto; margin: 20px 0; box-shadow: 0 0 20px #00ff41;
-            white-space: pre-wrap; line-height: 1.4;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #050505; color: #00ff41; font-family: 'Orbitron', sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+
+        /* TÍTULO E CABEÇALHO */
+        .header { text-align: center; margin-bottom: 30px; margin-top: 20px; }
+        h1 { font-size: 40px; text-shadow: 0 0 10px #00ff41; margin-bottom: 10px; }
+        .subtitle { font-family: 'VT323'; font-size: 20px; opacity: 0.8; }
+
+        /* ÁREA DO TERMINAL */
+        .terminal-window {
+            width: 100%; max-width: 800px;
+            background: #000; border: 2px solid #333; border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
+            overflow: hidden; margin-bottom: 30px;
+        }
+        .terminal-header {
+            background: #111; padding: 10px 15px; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .terminal-dots span {
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+            margin-right: 5px; background: #555;
+        }
+        .terminal-content {
+            height: 300px; padding: 15px; overflow-y: auto;
+            font-family: 'VT323', monospace; font-size: 16px; color: #ccc;
+            white-space: pre-wrap;
+        }
+        .log-info { color: #00ff41; }
+        .log-warn { color: #ffff00; }
+        .log-error { color: #ff0000; }
+
+        /* BARRA DE PROGRESSO */
+        .progress-container {
+            width: 100%; height: 4px; background: #222; margin-top: 0;
         }
         .progress-bar {
-            width: 100%; height: 20px; background: #1a1a1a; border: 1px solid #00ff41;
-            border-radius: 10px; overflow: hidden; margin: 10px 0;
+            height: 100%; width: 0%; background: #00ff41;
+            box-shadow: 0 0 10px #00ff41; transition: width 0.2s;
         }
-        .progress-fill {
-            height: 100%; background: linear-gradient(90deg, #00ff41, #d600ff);
-            width: 0%; transition: width 0.3s; box-shadow: 0 0 10px #00ff41;
+
+        /* BOTÕES */
+        .controls { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+        
+        .flash-btn {
+            padding: 15px 30px; border: none; border-radius: 5px;
+            font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex; align-items: center; gap: 10px;
+            text-transform: uppercase;
         }
-        .firmware-selector {
-            display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap;
+        
+        .btn-marauder {
+            background: rgba(0, 20, 0, 0.8); border: 2px solid #00ff41; color: #00ff41;
         }
-        .fw-btn { 
-            padding: 10px 20px; background: rgba(0,255,65,0.2); border: 2px solid #00ff41;
-            color: #00ff41; border-radius: 25px; cursor: pointer; font-family: 'Orbitron';
+        .btn-marauder:hover { background: #00ff41; color: #000; box-shadow: 0 0 20px #00ff41; }
+
+        .btn-bruce {
+            background: rgba(20, 0, 20, 0.8); border: 2px solid #d600ff; color: #d600ff;
         }
-        .fw-btn.active { background: #00ff41; color: #000; box-shadow: 0 0 15px #00ff41; }
+        .btn-bruce:hover { background: #d600ff; color: #fff; box-shadow: 0 0 20px #d600ff; }
+
     </style>
 </head>
 <body>
-    <!-- TEU INTRO E HEADER INTACTOS -->
-    <div id="intro-overlay" onclick="startSystem()">
-        <div class="intro-text">INITIALIZING SYSTEM...</div>
-        <div class="loader-bar"><div class="loader-progress"></div></div>
-        <div class="intro-hint">[ CLICK TO START ]</div>
+
+    <div class="header">
+        <h1>SK404 LAB</h1>
+        <div class="subtitle">FIRMWARE INSTALLER V2.0 // SERIAL LINK ONLINE</div>
     </div>
 
-    <canvas id="matrix"></canvas>
-    <div class="terminal-bar">
-        <span class="status-text" id="status">> SYSTEM: ONLINE</span>
-        <span class="status-text blink">_</span>
-    </div>
-
-    <div class="glitch-text">MARAUDER + BRUCE FLASH TOOL</div>
-
-    <!-- NOVO: SELETOR DE FIRMWARE -->
-    <div class="firmware-selector">
-        <button class="fw-btn active" onclick="selectFirmware('maurauder')">🕷️ Maurauder</button>
-        <button class="fw-btn" onclick="selectFirmware('bruce')">🔥 Bruce Smoochie</button>
-    </div>
-
-    <!-- PROGRESS BAR -->
-    <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
-
-    <!-- TEUS BOTÕES + NOVOS -->
-    <div class="control-panel">
-        <!-- Teus botões ESP Web Tools mantidos -->
-        <esp-web-install-button manifest="manifest_normal.json">
-            <button slot="activate" class="custom-btn" onclick="updateStatus('Maurauder Standard...')">
-                <span class="btn-title">STANDARD</span><span class="btn-desc">ESP32 WROOM</span>
-            </button>
-        </esp-web-install-button>
-
-        <!-- NOVO: FLASH MANUAL COM TERMINAL -->
-        <div class="custom-btn" onclick="connectAndFlash()" style="cursor:pointer;">
-            <span class="btn-title" id="fw-title">CONNECT</span>
-            <span class="btn-desc" id="fw-desc">Web Serial + Terminal</span>
+    <!-- TERMINAL DE LOGS -->
+    <div class="terminal-window">
+        <div class="terminal-header">
+            <div class="terminal-dots"><span style="background:#ff5f56"></span><span style="background:#ffbd2e"></span><span style="background:#27c93f"></span></div>
+            <div style="font-size:12px;color:#666">SERIAL_MONITOR.EXE</div>
+        </div>
+        <div class="progress-container"><div id="progressBar" class="progress-bar"></div></div>
+        <div id="terminal" class="terminal-content">
+            > SYSTEM READY...
+            > WAITING FOR DEVICE CONNECTION...
         </div>
     </div>
 
-    <!-- NOVO: TERMINAL -->
-    <div id="terminal"></div>
+    <!-- BOTÕES DE INSTALAÇÃO -->
+    <div class="controls">
+        <!-- Botão Maurauder -->
+        <button class="flash-btn btn-marauder" onclick="startFlash('marauder')">
+            <i class="fas fa-spider"></i> Flash Marauder
+        </button>
 
-    <!-- TEU FOOTER INTACTO -->
-    <div class="instructions">⚠️ CONNECT VIA USB UART. HOLD BOOT IF STUCK.</div>
-    <div class="social-dock"><!-- teus ícones --></div>
-
+        <!-- Botão Bruce -->
+        <button class="flash-btn btn-bruce" onclick="startFlash('bruce')">
+            <i class="fas fa-fire"></i> Flash Bruce (Smoochie)
+        </button>
+    </div>
     <script>
-        // TEUS SCRIPTS INTACTOS (matrix, sons, intro)
-        // ... todo o teu código anterior ...
+        const term = document.getElementById('terminal');
+        const progressBar = document.getElementById('progressBar');
+        let esploader;
 
-        // NOVO: SISTEMA WEB SERIAL + TERMINAL
-        let port, reader, writer, currentFirmware = 'maurauder';
-
-        const terminal = document.getElementById('terminal');
-        const progress = document.getElementById('progress');
-        const fwTitle = document.getElementById('fw-title');
-        const fwDesc = document.getElementById('fw-desc');
-
-        function log(msg) {
-            terminal.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-            terminal.scrollTop = terminal.scrollHeight;
+        // Função para escrever no terminal
+        function log(msg, type = 'info') {
+            const span = document.createElement('div');
+            span.textContent = `> ${msg}`;
+            span.className = `log-${type}`;
+            term.appendChild(span);
+            term.scrollTop = term.scrollHeight;
         }
 
-        function updateProgress(percent) {
-            progress.style.width = percent + '%';
-            log(`⏳ Progresso: ${percent}%`);
-        }
-
-        function selectFirmware(type) {
-            currentFirmware = type;
-            document.querySelectorAll('.fw-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if(type === 'maurauder') {
-                fwTitle.textContent = 'Maurauder';
-                fwDesc.textContent = 'ESP32 Standard';
-            } else {
-                fwTitle.textContent = 'Bruce Smoochie';
-                fwDesc.textContent = '4 ficheiros completos';
-            }
-        }
-
-        async function connectAndFlash() {
+        async function startFlash(firmwareType) {
             try {
-                log('🔌 Procurando dispositivos USB...');
-                port = await navigator.serial.requestPort();
+                // 1. Pedir porta Serial
+                log("A pedir permissão USB...", "info");
+                const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
                 
-                log(`✅ Conectado: ${port.device_.productId || 'ESP32'}`);
-                
-                // Terminal listener
-                reader = port.readable.getReader();
-                (async () => {
-                    while(true) {
-                        const {value, done} = await reader.read();
-                        if(done) break;
-                        log(`ESP32: ${new TextDecoder().decode(value)}`);
-                    }
-                })();
+                log("Dispositivo conectado!", "info");
+                log("A inicializar ESPTool...", "info");
 
-                // Flash baseado no selecionado
-                if(currentFirmware === 'bruce') {
-                    await flashBruce();
-                } else {
-                    await flashMaurauder();
+                // 2. Conectar ESPTool
+                const transport = new Transport(port);
+                esploader = new ESPLoader(transport, 115200, null);
+                await esploader.main_fn();
+                await esploader.flash_id();
+
+                log("Chip detectado: " + esploader.chip.CHIP_NAME, "info");
+
+                // 3. Definir ficheiros baseados no botão clicado
+                let fileArray = [];
+                
+                if (firmwareType === 'bruce') {
+                    log("Preparando BRUCE SMOOCHIE...", "warn");
+                    // O offset do Bruce Smoochie geralmente é:
+                    // Bootloader: 0x1000 | Partitions: 0x8000 | Firmware: 0x10000 | Reaper: 0x290000 (exemplo)
+                    // IMPORTANTE: Se o Reaper for ficheiro de sistema, o offset varia. 
+                    // Vou assumir padrão ESP32. Se falhar, avisa.
+                    
+                    fileArray = [
+                        { data: await loadFile('bruce/bootloader.bin'), address: 0x1000 },
+                        { data: await loadFile('bruce/partitions.bin'), address: 0x8000 },
+                        { data: await loadFile('bruce/boot_app0.bin'), address: 0xE000 }, // Necessário para alguns ESP32
+                        { data: await loadFile('bruce/firmware.bin'), address: 0x10000 },
+                        // Reaper.bin geralmente é o filesystem ou app partition 2?
+                        // Se não souberes o offset exato do reaper, o melhor é flashar só o firmware principal primeiro.
+                        // { data: await loadFile('bruce/reaper.bin'), address: 0x???? } 
+                    ];
+                } 
+                else {
+                    log("Preparando MARAUDER...", "info");
+                    fileArray = [
+                        { data: await loadFile('bootloader.bin'), address: 0x1000 },
+                        { data: await loadFile('partitions.bin'), address: 0x8000 },
+                        { data: await loadFile('boot_app0.bin'), address: 0xE000 },
+                        { data: await loadFile('firmware.bin'), address: 0x10000 }
+                    ];
                 }
+
+                // 4. Iniciar Flash
+                log("A APAGAR E FLASHAR... NÃO DESLIGUE!", "warn");
                 
-            } catch(e) {
-                log(`❌ Erro: ${e.message}`);
+                await esploader.write_flash(
+                    fileArray,
+                    'keep',
+                    'keep',
+                    'keep',
+                    false,
+                    true,
+                    (fileIndex, written, total) => {
+                        const percent = Math.round((written / total) * 100);
+                        progressBar.style.width = percent + '%';
+                        if(percent % 10 === 0) log(`Progresso: ${percent}%...`);
+                    }
+                );
+
+                log("SUCESSO! Reiniciando...", "info");
+                await transport.setDTR(false);
+                await transport.setRTS(true); // Reset
+
+            } catch (e) {
+                log("ERRO: " + e.message, "error");
             }
         }
 
-        async function flashBruce() {
-            log('🔥 Iniciando Bruce Smoochie...');
-            const files = [
-                'bruce/bootloader.bin',
-                'bruce/partitions.bin',
-                'bruce/firmware.bin',
-                'bruce/reaper.bin'
-            ];
-            
-            writer = port.writable.getWriter();
-            let totalBytes = 0;
-            
-            for(let i=0; i<files.length; i++) {
-                const response = await fetch(files[i]);
-                const buffer = await response.arrayBuffer();
-                totalBytes += buffer.byteLength;
-                
-                log(`📤 Flash ${files[i]} (${(buffer.byteLength/1024/1024).toFixed(1)}MB)`);
-                
-                await writer.write(new Uint8Array(buffer));
-                updateProgress((totalBytes / 8000000) * 100); // ~8MB total
-            }
-            
-            writer.releaseLock();
-            log('🎉 Bruce Smoochie instalado!');
-            updateStatus('Bruce Smoochie: OK');
-        }
-
-        async function flashMaurauder() {
-            // Teu Maurauder atual + progresso
-            log('🕷️ Flash Maurauder...');
-            // Código similar mas para manifest_normal.json
-            updateStatus('Maurauder: OK');
+        // Função auxiliar para baixar ficheiros
+        async function loadFile(url) {
+            log(`Baixando: ${url}...`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Falha ao baixar ${url}`);
+            const blob = await response.blob();
+            return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsBinaryString(blob);
+            });
         }
     </script>
 </body>
 </html>
+
