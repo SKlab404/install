@@ -1,265 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ CYBER DECK // FLASH & TERMINAL</title>
+    <title>🕷️ MARAUDER FLASH V3.0</title>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <!-- Ícones FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
         
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 4px; }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
+        
         body {
-            background: #000; color: #00ff41; font-family: 'Orbitron', sans-serif;
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background: #000;
+            color: #00ff41;
+            font-family: 'Orbitron', monospace;
+            overflow-y: auto; /* Permite scroll se necessário */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
         }
         
-        canvas#matrix { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.15; }
-
-        /* HEADER */
-        header {
-            padding: 15px 30px; border-bottom: 2px solid #00ff41; background: rgba(0,20,0,0.9);
-            display: flex; justify-content: space-between; align-items: center; z-index: 10;
-        }
-        .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px #00ff41; }
-        .status-badge { font-family: 'VT323'; font-size: 20px; color: #00ff41; }
-
-        /* MAIN LAYOUT */
-        main { display: flex; flex: 1; padding: 20px; gap: 20px; z-index: 5; height: calc(100vh - 70px); }
+        canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.15; }
         
-        /* LEFT PANEL: FLASHING */
-        .panel-flash {
-            flex: 0 0 350px; background: rgba(0,10,0,0.8); border: 1px solid #333;
-            padding: 20px; display: flex; flex-direction: column; gap: 15px;
-            overflow-y: auto; backdrop-filter: blur(5px);
+        /* --- TERMINAL COMPACTO (HEADER) --- */
+        .terminal-bar {
+            width: 100%; max-width: 800px;
+            background: rgba(10, 10, 10, 0.95);
+            border: 2px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px #00ff41;
         }
-        
-        /* RIGHT PANEL: TERMINAL */
-        .panel-terminal {
-            flex: 1; display: flex; flex-direction: column; 
-            background: rgba(0,0,0,0.9); border: 2px solid #333; position: relative;
+        .status-text { font-family: 'VT323', monospace; font-size: 20px; color: #00ff41; }
+        .blink { animation: blink 1s infinite; }
+
+        /* --- TÍTULO --- */
+        .glitch-text {
+            font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 20px;
+            text-shadow: 2px 2px #d600ff;
         }
 
-        /* BUTTON STYLES */
-        .section-title { color: #fff; font-size: 14px; margin-bottom: 10px; opacity: 0.7; }
-        
-        esp-web-install-button { width: 100%; display: block; }
-        
-        .cyber-btn {
-            width: 100%; padding: 15px; margin-bottom: 10px;
-            background: rgba(0, 40, 0, 0.6); border: 1px solid #00ff41; color: #fff;
-            cursor: pointer; text-align: left; transition: 0.2s; position: relative;
+        /* --- ÁREA DE VÍDEO --- */
+        .video-frame {
+            width: 100%; max-width: 600px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            position: relative;
         }
-        .cyber-btn:hover { background: rgba(0, 255, 65, 0.2); transform: translateX(5px); box-shadow: -5px 0 0 #00ff41; }
-        
-        .btn-main { font-size: 18px; font-weight: bold; display: block; }
-        .btn-sub { font-family: 'VT323'; font-size: 14px; color: #00ff41; display: block; opacity: 0.8; }
+        /* Moldura Cyberpunk no vídeo */
+        .video-frame::before {
+            content: "INSTALL_GUIDE.mp4";
+            position: absolute; top: 5px; left: 10px;
+            font-family: 'VT323'; color: rgba(0,255,65,0.7);
+            background: rgba(0,0,0,0.8); padding: 2px 5px;
+            z-index: 5; pointer-events: none;
+        }
 
-        .danger-zone { border-color: #ff0055; }
-        .danger-zone .btn-sub { color: #ff0055; }
-        .danger-zone:hover { background: rgba(255, 0, 85, 0.15); box-shadow: -5px 0 0 #ff0055; }
+        /* --- BOTÕES --- */
+        .control-panel {
+            display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 40px;
+        }
+        esp-web-install-button { display: block !important; }
+        .custom-btn {
+            background: rgba(0, 20, 0, 0.8);
+            border: 2px solid #00ff41;
+            width: 280px; height: 100px;
+            cursor: pointer;
+            position: relative;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            text-align: center;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+            transition: all 0.2s;
+        }
+        .custom-btn:hover { transform: translateY(-5px); box-shadow: 0 0 25px #00ff41; background: rgba(0, 255, 65, 0.1); }
+        .btn-title { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 5px; }
+        .btn-desc { font-family: 'VT323'; font-size: 18px; color: #00ff41; }
+        .pro-mode { border-color: #d600ff; }
+        .pro-mode:hover { box-shadow: 0 0 25px #d600ff; background: rgba(214, 0, 255, 0.1); }
+        .pro-mode .btn-desc { color: #d600ff; }
 
-        /* TERMINAL STYLES */
-        .term-header {
-            padding: 10px; background: #111; border-bottom: 1px solid #333;
-            display: flex; justify-content: space-between; align-items: center;
+        /* --- SOCIAL LINKS (RODAPÉ) --- */
+        .social-dock {
+            display: flex; gap: 20px;
+            background: rgba(0,0,0,0.6);
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: 1px solid #333;
+            backdrop-filter: blur(5px);
         }
-        .term-output {
-            flex: 1; padding: 15px; font-family: 'VT323', monospace; font-size: 16px; 
-            overflow-y: auto; color: #ccc; white-space: pre-wrap;
+        .social-icon {
+            color: #666; font-size: 24px; transition: all 0.3s;
         }
-        .term-input-area {
-            padding: 10px; background: #111; border-top: 1px solid #333; display: flex; gap: 10px;
-        }
-        input#cmdInput {
-            flex: 1; background: #000; border: 1px solid #333; color: #00ff41; 
-            padding: 8px; font-family: 'VT323'; font-size: 18px;
-        }
-        button.term-btn {
-            background: #00ff41; color: #000; border: none; padding: 0 20px; 
-            font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
-        }
-        button.term-btn:disabled { background: #333; cursor: not-allowed; }
+        .social-icon:hover { color: #fff; transform: scale(1.2); text-shadow: 0 0 10px #fff; }
+        .github:hover { color: #fff; }
+        .youtube:hover { color: #f00; text-shadow: 0 0 10px #f00; }
+        .discord:hover { color: #5865F2; text-shadow: 0 0 10px #5865F2; }
 
-        .log-sys { color: #00ff41; }
-        .log-tx { color: #00ffff; }
-        .log-rx { color: #cccccc; }
-
-        /* INTRO OVERLAY */
-        #intro-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: pointer;
-        }
+        @keyframes blink { 50% { opacity: 0; } }
+        @media (max-width: 700px) { .glitch-text { font-size: 28px; } .control-panel { gap: 15px; } }
     </style>
 </head>
 <body>
-
-    <!-- INTRO -->
-    <div id="intro-overlay" onclick="startSystem()">
-        <h1 style="text-shadow: 0 0 20px #00ff41;">SYSTEM OFFLINE</h1>
-        <p style="font-family: 'VT323'; font-size: 20px; margin-top: 10px;">[ CLICK TO INITIALIZE ]</p>
-    </div>
-
     <canvas id="matrix"></canvas>
 
-    <header>
-        <div class="logo"><i class="fas fa-microchip"></i> CYBER DECK</div>
-        <div class="status-badge" id="statusMsg">SYSTEM: READY</div>
-    </header>
+    <!-- 1. TERMINAL COMPACTO (STATUS BAR) -->
+    <div class="terminal-bar">
+        <span class="status-text">> SYSTEM: READY</span>
+        <span class="status-text blink">_</span>
+    </div>
 
-    <main>
-        <!-- LEFT: FLASHING -->
-        <div class="panel-flash">
-            <div class="section-title">// FIRMWARE ARMORY</div>
+    <!-- 2. TÍTULO -->
+    <div class="glitch-text">MARAUDER FLASH TOOL</div>
 
-            <!-- MARAUDER STD -->
-            <esp-web-install-button manifest="manifest_std.json">
-                <button slot="activate" class="cyber-btn">
-                    <span class="btn-main">MARAUDER STD</span>
-                    <span class="btn-sub">ESP32 WROOM / DEV KIT</span>
-                </button>
-            </esp-web-install-button>
+    <!-- 3. VÍDEO TUTORIAL -->
+    <div class="video-frame">
+        <!-- Substitua o ID pelo seu vídeo -->
+        <iframe width="100%" height="315" src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Tutorial" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
 
-            <!-- MARAUDER C5 -->
-            <esp-web-install-button manifest="manifest_c5.json">
-                <button slot="activate" class="cyber-btn">
-                    <span class="btn-main">MARAUDER C5</span>
-                    <span class="btn-sub">M5STICK / CARDPUTER</span>
-                </button>
-            </esp-web-install-button>
+    <!-- 4. BOTÕES DE INSTALAÇÃO -->
+    <div class="control-panel">
+        <esp-web-install-button manifest="manifest_normal.json">
+            <button slot="activate" class="custom-btn" onclick="updateStatus('Initializing Standard Protocol...')" onmouseenter="playHoverSound()">
+                <span class="btn-title">STANDARD</span>
+                <span class="btn-desc">ESP32 (WROOM/WROVER)</span>
+            </button>
+        </esp-web-install-button>
 
-            <!-- BRUCE S3 -->
-            <div class="section-title" style="margin-top: 20px; color: #ff0055;">// RESTRICTED ACCESS</div>
-            <esp-web-install-button manifest="manifest_bruce.json">
-                <button slot="activate" class="cyber-btn danger-zone" onclick="warningProtocol()">
-                    <span class="btn-main">BRUCE // REAPER</span>
-                    <span class="btn-sub">S3 ZERO / SMOOCHIE ONLY</span>
-                </button>
-            </esp-web-install-button>
-        </div>
+        <esp-web-install-button manifest="manifest_5g.json">
+            <button slot="activate" class="custom-btn pro-mode" onclick="updateStatus('Initializing 5G Protocol...')" onmouseenter="playHoverSound()">
+                <span class="btn-title">5G / C5</span>
+                <span class="btn-desc">ESP32-C5 (RISC-V)</span>
+            </button>
+        </esp-web-install-button>
+    </div>
 
-        <!-- RIGHT: TERMINAL -->
-        <div class="panel-terminal">
-            <div class="term-header">
-                <span><i class="fas fa-terminal"></i> SERIAL UPLINK</span>
-                <button id="connectBtn" class="term-btn" style="height: 30px; font-size: 12px;">CONNECT</button>
-            </div>
-            <div id="terminal" class="term-output">
-                <span class="log-sys">> WAITING FOR TARGET...</span><br>
-                <span class="log-sys">> CLICK "CONNECT" TO START SERIAL LINK.</span>
-            </div>
-            <div class="term-input-area">
-                <span style="color: #00ff41; padding-top: 5px;">$</span>
-                <input type="text" id="cmdInput" placeholder="Enter command..." disabled>
-                <button id="sendBtn" class="term-btn" disabled>SEND</button>
-                <button id="clearBtn" class="term-btn" style="background: #333; color: #fff;">CLR</button>
-            </div>
-        </div>
-    </main>
+    <!-- 5. SOCIAL DOCK -->
+    <div class="social-dock">
+        <a href="https://github.com/DtechScript" target="_blank" class="social-icon github"><i class="fab fa-github"></i></a>
+        <a href="#" target="_blank" class="social-icon youtube"><i class="fab fa-youtube"></i></a>
+        <a href="#" target="_blank" class="social-icon discord"><i class="fab fa-discord"></i></a>
+    </div>
 
     <script>
-        // --- MATRIX FX ---
+        // MATRIX
         const canvas = document.getElementById('matrix');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        const chars = '01XYZABC'; const fontSize = 14; 
-        const drops = Array(Math.floor(canvas.width/fontSize)).fill(1);
-        function draw() {
-            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#0F0';
-            drops.forEach((y, i) => {
-                ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fontSize, y*fontSize);
-                if(y*fontSize > canvas.height && Math.random()>0.975) drops[i]=0; drops[i]++;
-            });
-        }
-        setInterval(draw, 50);
-
-        // --- AUDIO & INTRO ---
-        function startSystem() {
-            document.getElementById('intro-overlay').style.opacity = '0';
-            setTimeout(() => document.getElementById('intro-overlay').remove(), 1000);
-            const audio = new Audio('intro.mp3'); audio.volume = 0.4; audio.play().catch(()=>{});
-        }
-
-        // --- FUNNY POPUP FOR BRUCE ---
-        function warningProtocol() {
-            if(!confirm("💀 REAPER PROTOCOL INITIATED 💀\n\nAre you trying to summon demons or just flash an S3?\n\nConfirm you have the RIGHT HARDWARE (S3 Zero/Smoochie).\n(I am not responsible if your house turns into a portal.)")) {
-                event.stopPropagation(); event.preventDefault();
+        const chars = '01XYZABC'; const fontSize = 14; const columns = canvas.width/fontSize; const drops = Array(Math.floor(columns)).fill(1);
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#0F0'; ctx.font = fontSize+'px monospace';
+            for(let i=0; i<drops.length; i++) {
+                const text = chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+                if(drops[i]*fontSize > canvas.height && Math.random() > 0.975) drops[i]=0; drops[i]++;
             }
         }
+        setInterval(drawMatrix, 50);
 
-        // --- TERMINAL LOGIC (THE BRAINS) ---
-        let port, reader, writer, readableStreamClosed, writableStreamClosed;
-        const term = document.getElementById('terminal');
-        const connectBtn = document.getElementById('connectBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const input = document.getElementById('cmdInput');
-
-        function log(msg, type='log-sys') {
-            const line = document.createElement('div');
-            line.className = type; line.textContent = msg;
-            term.appendChild(line); term.scrollTop = term.scrollHeight;
+        // ATUALIZA BARRA DE STATUS
+        function updateStatus(msg) {
+            document.querySelector('.status-text').innerText = '> SYSTEM: ' + msg;
+            playClickSound();
         }
 
-        connectBtn.addEventListener('click', async () => {
-            if (port) { // DISCONNECT
-                reader.cancel(); await readableStreamClosed.catch(()=>{});
-                writer.close(); await writableStreamClosed;
-                await port.close(); port = null;
-                connectBtn.textContent = 'CONNECT'; connectBtn.style.background = '#00ff41';
-                input.disabled = true; sendBtn.disabled = true;
-                log('> LINK TERMINATED.', 'log-sys');
-                return;
-            }
-            try { // CONNECT
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-                
-                const textDecoder = new TextDecoderStream();
-                readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-                reader = textDecoder.readable.getReader();
-                
-                const textEncoder = new TextEncoderStream();
-                writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-                writer = textEncoder.writable.getWriter();
-
-                connectBtn.textContent = 'DISCONNECT'; connectBtn.style.background = '#ff0055';
-                input.disabled = false; sendBtn.disabled = false; input.focus();
-                log('> UPLINK ESTABLISHED. 115200 BAUD.', 'log-sys');
-                readLoop();
-            } catch (e) { log('> ERROR: ' + e, 'log-sys'); }
-        });
-
-        async function readLoop() {
-            while (port.readable) {
-                try {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    // Simply append text. Complex ANSI parsing omitted for speed.
-                    term.insertAdjacentText('beforeend', value);
-                    term.scrollTop = term.scrollHeight;
-                } catch (e) { break; }
-            }
+        // SONS (AudioContext)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playHoverSound() {
+            if(audioCtx.state==='suspended') audioCtx.resume();
+            const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
+            o.frequency.setValueAtTime(800, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime+0.05);
+            g.gain.setValueAtTime(0.02, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.05);
+            o.start(); o.stop(audioCtx.currentTime+0.05);
         }
-
-        async function send() {
-            const data = input.value;
-            if (port && writer && data) {
-                await writer.write(data + '\n');
-                log('> ' + data, 'log-tx');
-                input.value = '';
-            }
+        function playClickSound() {
+            if(audioCtx.state==='suspended') audioCtx.resume();
+            const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
+            o.type='square'; o.frequency.setValueAtTime(200, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime+0.2);
+            g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.2);
+            o.start(); o.stop(audioCtx.currentTime+0.2);
         }
-
-        sendBtn.addEventListener('click', send);
-        input.addEventListener('keypress', (e) => { if(e.key === 'Enter') send(); });
-        document.getElementById('clearBtn').addEventListener('click', () => term.innerHTML = '');
-
     </script>
 </body>
 </html>
