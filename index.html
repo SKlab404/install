@@ -3,227 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🕷️ FLASH STATION</title>
-    <!-- ESP Web Tools -->
+    <title>⚡ CYBER DECK // FLASH & TERMINAL</title>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
         
-        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #00ff41; border-radius: 4px; }
+
         body {
-            background: #000;
-            color: #00ff41;
-            font-family: 'Orbitron', monospace;
-            overflow-y: auto;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+            background: #000; color: #00ff41; font-family: 'Orbitron', sans-serif;
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
         
-        canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.15; }
+        canvas#matrix { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.15; }
 
-        /* --- INTRO OVERLAY --- */
+        /* HEADER */
+        header {
+            padding: 15px 30px; border-bottom: 2px solid #00ff41; background: rgba(0,20,0,0.9);
+            display: flex; justify-content: space-between; align-items: center; z-index: 10;
+        }
+        .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px #00ff41; }
+        .status-badge { font-family: 'VT323'; font-size: 20px; color: #00ff41; }
+
+        /* MAIN LAYOUT */
+        main { display: flex; flex: 1; padding: 20px; gap: 20px; z-index: 5; height: calc(100vh - 70px); }
+        
+        /* LEFT PANEL: FLASHING */
+        .panel-flash {
+            flex: 0 0 350px; background: rgba(0,10,0,0.8); border: 1px solid #333;
+            padding: 20px; display: flex; flex-direction: column; gap: 15px;
+            overflow-y: auto; backdrop-filter: blur(5px);
+        }
+        
+        /* RIGHT PANEL: TERMINAL */
+        .panel-terminal {
+            flex: 1; display: flex; flex-direction: column; 
+            background: rgba(0,0,0,0.9); border: 2px solid #333; position: relative;
+        }
+
+        /* BUTTON STYLES */
+        .section-title { color: #fff; font-size: 14px; margin-bottom: 10px; opacity: 0.7; }
+        
+        esp-web-install-button { width: 100%; display: block; }
+        
+        .cyber-btn {
+            width: 100%; padding: 15px; margin-bottom: 10px;
+            background: rgba(0, 40, 0, 0.6); border: 1px solid #00ff41; color: #fff;
+            cursor: pointer; text-align: left; transition: 0.2s; position: relative;
+        }
+        .cyber-btn:hover { background: rgba(0, 255, 65, 0.2); transform: translateX(5px); box-shadow: -5px 0 0 #00ff41; }
+        
+        .btn-main { font-size: 18px; font-weight: bold; display: block; }
+        .btn-sub { font-family: 'VT323'; font-size: 14px; color: #00ff41; display: block; opacity: 0.8; }
+
+        .danger-zone { border-color: #ff0055; }
+        .danger-zone .btn-sub { color: #ff0055; }
+        .danger-zone:hover { background: rgba(255, 0, 85, 0.15); box-shadow: -5px 0 0 #ff0055; }
+
+        /* TERMINAL STYLES */
+        .term-header {
+            padding: 10px; background: #111; border-bottom: 1px solid #333;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .term-output {
+            flex: 1; padding: 15px; font-family: 'VT323', monospace; font-size: 16px; 
+            overflow-y: auto; color: #ccc; white-space: pre-wrap;
+        }
+        .term-input-area {
+            padding: 10px; background: #111; border-top: 1px solid #333; display: flex; gap: 10px;
+        }
+        input#cmdInput {
+            flex: 1; background: #000; border: 1px solid #333; color: #00ff41; 
+            padding: 8px; font-family: 'VT323'; font-size: 18px;
+        }
+        button.term-btn {
+            background: #00ff41; color: #000; border: none; padding: 0 20px; 
+            font-family: 'Orbitron'; font-weight: bold; cursor: pointer;
+        }
+        button.term-btn:disabled { background: #333; cursor: not-allowed; }
+
+        .log-sys { color: #00ff41; }
+        .log-tx { color: #00ffff; }
+        .log-rx { color: #cccccc; }
+
+        /* INTRO OVERLAY */
         #intro-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            transition: opacity 1s ease-out;
+            background: #000; z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer;
         }
-        .intro-text {
-            font-family: 'VT323', monospace; font-size: 28px; color: #00ff41;
-            letter-spacing: 4px; text-shadow: 0 0 10px #00ff41; margin-bottom: 20px;
-        }
-        .loader-bar {
-            width: 300px; height: 4px; background: #1a1a1a;
-            position: relative; overflow: hidden; border-radius: 2px;
-        }
-        .loader-progress {
-            position: absolute; top: 0; left: 0; height: 100%; width: 0%;
-            background: #00ff41;
-            box-shadow: 0 0 10px #00ff41;
-            animation: load 3.0s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
-        }
-        .intro-hint {
-            color: #444; font-family: 'VT323'; font-size: 14px; margin-top: 15px;
-            animation: blink 1s infinite; cursor: pointer;
-        }
-        .intro-hint:hover { color: #fff; text-shadow: 0 0 10px #fff; }
-
-        /* --- TERMINAL BAR --- */
-        .terminal-bar {
-            width: 100%; max-width: 800px;
-            background: rgba(10, 10, 10, 0.95);
-            border: 2px solid #00ff41;
-            border-radius: 5px;
-            padding: 10px 15px;
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 20px; box-shadow: 0 0 10px #00ff41;
-        }
-        .status-text { font-family: 'VT323', monospace; font-size: 20px; color: #00ff41; }
-        
-        /* --- TITLE --- */
-        .glitch-text {
-            font-size: 36px; font-weight: 900; color: #fff; margin-bottom: 20px;
-            text-shadow: 2px 2px #d600ff; text-align: center;
-        }
-
-        /* --- BUTTONS --- */
-        .control-panel {
-            display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-bottom: 40px;
-        }
-        esp-web-install-button { display: block !important; }
-        
-        .custom-btn {
-            background: rgba(0, 20, 0, 0.8);
-            border: 2px solid #00ff41;
-            width: 280px; height: 100px;
-            cursor: pointer; position: relative;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center; box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
-            transition: all 0.2s;
-            margin-bottom: 10px;
-        }
-        .custom-btn:hover { transform: translateY(-5px); box-shadow: 0 0 25px #00ff41; background: rgba(0, 255, 65, 0.1); }
-        .btn-title { font-size: 20px; font-weight: 900; color: #fff; margin-bottom: 5px; }
-        .btn-desc { font-family: 'VT323'; font-size: 18px; color: #00ff41; }
-        
-        /* PRO MODE (C5) */
-        .pro-mode { border-color: #d600ff; }
-        .pro-mode:hover { box-shadow: 0 0 25px #d600ff; background: rgba(214, 0, 255, 0.1); }
-        .pro-mode .btn-desc { color: #d600ff; }
-
-        /* DANGER MODE (BRUCE) */
-        .danger-mode { border-color: #ff0000; box-shadow: 0 0 15px rgba(255, 0, 0, 0.3); }
-        .danger-mode:hover { box-shadow: 0 0 35px #ff0000; background: rgba(255, 0, 0, 0.15); }
-        .danger-mode .btn-title { color: #ffcccc; text-shadow: 0 0 5px #f00; }
-        .danger-mode .btn-desc { color: #ff0000; font-weight: bold; }
-
-        /* --- FOOTER --- */
-        .instructions { color: #666; font-size: 12px; text-align: center; margin-bottom: 20px; font-family: 'Orbitron'; }
-        
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes load { 0% { width: 0%; } 100% { width: 100%; } }
     </style>
 </head>
 <body>
-    <!-- INTRO OVERLAY -->
+
+    <!-- INTRO -->
     <div id="intro-overlay" onclick="startSystem()">
-        <div class="intro-text">INITIALIZING SYSTEM...</div>
-        <div class="loader-bar"><div class="loader-progress"></div></div>
-        <div class="intro-hint">[ CLICK TO START ]</div>
+        <h1 style="text-shadow: 0 0 20px #00ff41;">SYSTEM OFFLINE</h1>
+        <p style="font-family: 'VT323'; font-size: 20px; margin-top: 10px;">[ CLICK TO INITIALIZE ]</p>
     </div>
 
     <canvas id="matrix"></canvas>
 
-    <!-- HEADER STATUS -->
-    <div class="terminal-bar">
-        <span class="status-text">> SYSTEM: ONLINE</span>
-        <span class="status-text blink">_</span>
-    </div>
+    <header>
+        <div class="logo"><i class="fas fa-microchip"></i> CYBER DECK</div>
+        <div class="status-badge" id="statusMsg">SYSTEM: READY</div>
+    </header>
 
-    <!-- TITLE -->
-    <div class="glitch-text">FLASH STATION</div>
+    <main>
+        <!-- LEFT: FLASHING -->
+        <div class="panel-flash">
+            <div class="section-title">// FIRMWARE ARMORY</div>
 
-    <!-- INSTALL BUTTONS -->
-    <div class="control-panel">
-        
-        <!-- BUTTON 1: MARAUDER STD -->
-        <esp-web-install-button manifest="manifest_std.json">
-            <button slot="activate" class="custom-btn" onclick="updateStatus('Launching Standard Protocol...')" onmouseenter="playHoverSound()">
-                <span class="btn-title">MARAUDER STD</span>
-                <span class="btn-desc">ESP32 (WROOM/WROVER)</span>
-            </button>
-        </esp-web-install-button>
+            <!-- MARAUDER STD -->
+            <esp-web-install-button manifest="manifest_std.json">
+                <button slot="activate" class="cyber-btn">
+                    <span class="btn-main">MARAUDER STD</span>
+                    <span class="btn-sub">ESP32 WROOM / DEV KIT</span>
+                </button>
+            </esp-web-install-button>
 
-        <!-- BUTTON 2: MARAUDER C5 -->
-        <esp-web-install-button manifest="manifest_c5.json">
-            <button slot="activate" class="custom-btn pro-mode" onclick="updateStatus('Launching C5 Protocol...')" onmouseenter="playHoverSound()">
-                <span class="btn-title">MARAUDER C5</span>
-                <span class="btn-desc">M5STICK-C / PLUS / 2</span>
-            </button>
-        </esp-web-install-button>
+            <!-- MARAUDER C5 -->
+            <esp-web-install-button manifest="manifest_c5.json">
+                <button slot="activate" class="cyber-btn">
+                    <span class="btn-main">MARAUDER C5</span>
+                    <span class="btn-sub">M5STICK / CARDPUTER</span>
+                </button>
+            </esp-web-install-button>
 
-        <!-- BUTTON 3: BRUCE S3 (NEW) -->
-        <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate" class="custom-btn danger-mode" onclick="alertBruce()" onmouseenter="playHoverSound()">
-                <span class="btn-title">🔥 BRUCE S3</span>
-                <span class="btn-desc">SMOOCHIE / S3 ZERO</span>
-            </button>
-        </esp-web-install-button>
-    </div>
+            <!-- BRUCE S3 -->
+            <div class="section-title" style="margin-top: 20px; color: #ff0055;">// RESTRICTED ACCESS</div>
+            <esp-web-install-button manifest="manifest_bruce.json">
+                <button slot="activate" class="cyber-btn danger-zone" onclick="warningProtocol()">
+                    <span class="btn-main">BRUCE // REAPER</span>
+                    <span class="btn-sub">S3 ZERO / SMOOCHIE ONLY</span>
+                </button>
+            </esp-web-install-button>
+        </div>
 
-    <!-- INSTRUCTIONS -->
-    <div class="instructions">
-        ⚠️ CONNECT VIA USB UART. HOLD <strong>BOOT</strong> IF STUCK.
-    </div>
+        <!-- RIGHT: TERMINAL -->
+        <div class="panel-terminal">
+            <div class="term-header">
+                <span><i class="fas fa-terminal"></i> SERIAL UPLINK</span>
+                <button id="connectBtn" class="term-btn" style="height: 30px; font-size: 12px;">CONNECT</button>
+            </div>
+            <div id="terminal" class="term-output">
+                <span class="log-sys">> WAITING FOR TARGET...</span><br>
+                <span class="log-sys">> CLICK "CONNECT" TO START SERIAL LINK.</span>
+            </div>
+            <div class="term-input-area">
+                <span style="color: #00ff41; padding-top: 5px;">$</span>
+                <input type="text" id="cmdInput" placeholder="Enter command..." disabled>
+                <button id="sendBtn" class="term-btn" disabled>SEND</button>
+                <button id="clearBtn" class="term-btn" style="background: #333; color: #fff;">CLR</button>
+            </div>
+        </div>
+    </main>
 
     <script>
-        // MATRIX EFFECT
+        // --- MATRIX FX ---
         const canvas = document.getElementById('matrix');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        const chars = '01XYZABC'; const fontSize = 14; const columns = canvas.width/fontSize; const drops = Array(Math.floor(columns)).fill(1);
-        function drawMatrix() {
-            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#0F0'; ctx.font = fontSize+'px monospace';
-            for(let i=0; i<drops.length; i++) {
-                const text = chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(text, i*fontSize, drops[i]*fontSize);
-                if(drops[i]*fontSize > canvas.height && Math.random() > 0.975) drops[i]=0; drops[i]++;
-            }
+        const chars = '01XYZABC'; const fontSize = 14; 
+        const drops = Array(Math.floor(canvas.width/fontSize)).fill(1);
+        function draw() {
+            ctx.fillStyle = 'rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#0F0';
+            drops.forEach((y, i) => {
+                ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fontSize, y*fontSize);
+                if(y*fontSize > canvas.height && Math.random()>0.975) drops[i]=0; drops[i]++;
+            });
         }
-        setInterval(drawMatrix, 50);
+        setInterval(draw, 50);
 
-        // AUDIO SYSTEM (HOVER & CLICK FX)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playHoverSound() {
-            if(audioCtx.state==='suspended') audioCtx.resume();
-            const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
-            o.frequency.setValueAtTime(800, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime+0.05);
-            g.gain.setValueAtTime(0.02, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.05);
-            o.start(); o.stop(audioCtx.currentTime+0.05);
-        }
-
-        function updateStatus(msg) {
-            document.querySelector('.status-text').innerText = '> SYSTEM: ' + msg;
-            if(audioCtx.state==='suspended') audioCtx.resume();
-            const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination);
-            o.type='square'; o.frequency.setValueAtTime(200, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime+0.2);
-            g.gain.setValueAtTime(0.05, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.2);
-            o.start(); o.stop(audioCtx.currentTime+0.2);
-        }
-
-        function alertBruce() {
-            updateStatus('WARNING: BRUCE PROTOCOL');
-            if(!confirm("⚠️ AVISO DE SEGURANÇA ⚠️\n\nEstás a instalar o BRUCE SMOOCHIE S3.\n\nConfirma que tens uma board SMOOCHIE ou S3 ZERO ligada.\n\nNÃO uses isto em boards normais!")) {
-                event.stopPropagation();
-                event.preventDefault();
-            }
-        }
-
-        // --- MÚSICA MP3 NA INTRO ---
-        function playIntroMusic() {
-            // Certifica-te que tens o ficheiro 'intro.mp3' na mesma pasta
-            const audio = new Audio('intro.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => console.log("Audio waiting for interaction"));
-        }
-
-        // --- SISTEMA DE START ---
-        let systemStarted = false;
+        // --- AUDIO & INTRO ---
         function startSystem() {
-            if(systemStarted) return;
-            systemStarted = true;
-            playIntroMusic();
-            const intro = document.getElementById('intro-overlay');
-            setTimeout(() => {
-                intro.style.opacity = '0';
-                setTimeout(() => { intro.style.display = 'none'; }, 1000);
-            }, 300);
+            document.getElementById('intro-overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('intro-overlay').remove(), 1000);
+            const audio = new Audio('intro.mp3'); audio.volume = 0.4; audio.play().catch(()=>{});
         }
+
+        // --- FUNNY POPUP FOR BRUCE ---
+        function warningProtocol() {
+            if(!confirm("💀 REAPER PROTOCOL INITIATED 💀\n\nAre you trying to summon demons or just flash an S3?\n\nConfirm you have the RIGHT HARDWARE (S3 Zero/Smoochie).\n(I am not responsible if your house turns into a portal.)")) {
+                event.stopPropagation(); event.preventDefault();
+            }
+        }
+
+        // --- TERMINAL LOGIC (THE BRAINS) ---
+        let port, reader, writer, readableStreamClosed, writableStreamClosed;
+        const term = document.getElementById('terminal');
+        const connectBtn = document.getElementById('connectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const input = document.getElementById('cmdInput');
+
+        function log(msg, type='log-sys') {
+            const line = document.createElement('div');
+            line.className = type; line.textContent = msg;
+            term.appendChild(line); term.scrollTop = term.scrollHeight;
+        }
+
+        connectBtn.addEventListener('click', async () => {
+            if (port) { // DISCONNECT
+                reader.cancel(); await readableStreamClosed.catch(()=>{});
+                writer.close(); await writableStreamClosed;
+                await port.close(); port = null;
+                connectBtn.textContent = 'CONNECT'; connectBtn.style.background = '#00ff41';
+                input.disabled = true; sendBtn.disabled = true;
+                log('> LINK TERMINATED.', 'log-sys');
+                return;
+            }
+            try { // CONNECT
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                
+                const textDecoder = new TextDecoderStream();
+                readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                reader = textDecoder.readable.getReader();
+                
+                const textEncoder = new TextEncoderStream();
+                writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+                writer = textEncoder.writable.getWriter();
+
+                connectBtn.textContent = 'DISCONNECT'; connectBtn.style.background = '#ff0055';
+                input.disabled = false; sendBtn.disabled = false; input.focus();
+                log('> UPLINK ESTABLISHED. 115200 BAUD.', 'log-sys');
+                readLoop();
+            } catch (e) { log('> ERROR: ' + e, 'log-sys'); }
+        });
+
+        async function readLoop() {
+            while (port.readable) {
+                try {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    // Simply append text. Complex ANSI parsing omitted for speed.
+                    term.insertAdjacentText('beforeend', value);
+                    term.scrollTop = term.scrollHeight;
+                } catch (e) { break; }
+            }
+        }
+
+        async function send() {
+            const data = input.value;
+            if (port && writer && data) {
+                await writer.write(data + '\n');
+                log('> ' + data, 'log-tx');
+                input.value = '';
+            }
+        }
+
+        sendBtn.addEventListener('click', send);
+        input.addEventListener('keypress', (e) => { if(e.key === 'Enter') send(); });
+        document.getElementById('clearBtn').addEventListener('click', () => term.innerHTML = '');
+
     </script>
 </body>
 </html>
