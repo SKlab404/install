@@ -2,108 +2,114 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CYBER FLASHER FINAL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MARAUDER FLASHER</title>
+    
+    <!-- ESP WEB TOOLS (O que a Momentum usa!) -->
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    
     <style>
-        body { background: #000; color: #00ff41; font-family: monospace; padding: 20px; text-align: center; }
-        button { padding: 15px 30px; font-size: 18px; background: #003300; color: #0f0; border: 2px solid #0f0; cursor: pointer; margin: 10px; }
-        button:hover { background: #005500; }
-        #term { 
-            width: 80%; margin: 20px auto; height: 300px; 
-            background: #111; border: 1px solid #333; 
-            overflow-y: scroll; text-align: left; padding: 10px; 
-            white-space: pre-wrap; font-family: 'Courier New', monospace;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap');
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #00ff41;
+            font-family: 'Orbitron', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 50px;
+            text-shadow: 0 0 20px #00ff41;
+        }
+        
+        .card {
+            background: rgba(0, 20, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 15px;
+            max-width: 400px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+        }
+        
+        .card h2 {
+            margin-top: 0;
+            color: #fff;
+        }
+        
+        .card p {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        esp-web-install-button {
+            display: block;
+        }
+        
+        esp-web-install-button button {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #00ff41;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+        }
+        
+        esp-web-install-button button:hover {
+            background: #00cc33;
+            box-shadow: 0 0 20px #00ff41;
+        }
+        
+        .danger {
+            border-color: #ff0055;
+            box-shadow: 0 0 30px rgba(255, 0, 85, 0.3);
+        }
+        
+        .danger button {
+            background: #ff0055;
+            color: #fff;
+        }
+        
+        .danger button:hover {
+            background: #cc0044;
         }
     </style>
 </head>
 <body>
-    <h1>🕷️ CYBER FLASHER 🕷️</h1>
+    <h1>⚡ MARAUDER FLASHER ⚡</h1>
     
-    <!-- Botões com IDs para serem apanhados pelo script -->
-    <button id="btnStd">FLASH STD</button>
-    <button id="btnC5">FLASH C5</button>
-    <button id="btnBruce" style="border-color: red; color: red;">FLASH BRUCE</button>
-
-    <div id="term">Ready. Click a button.</div>
-
-    <!-- SCRIPT MÓDULO (IMPORTAÇÃO CORRETA) -->
-    <script type="module">
-        // Importa as classes necessárias
-        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.4.2/lib/index.js';
-
-        const term = document.getElementById('term');
-        function log(msg) { 
-            term.innerText += msg + "\n"; 
-            term.scrollTop = term.scrollHeight;
-        }
-
-        async function runFlash(manifestFile) {
-            try {
-                if (!navigator.serial) {
-                    return log("ERROR: Web Serial not supported in this browser. Use Chrome/Edge.");
-                }
-
-                log(`\n--- STARTING ${manifestFile} ---`);
-                
-                // 1. Ler Manifest
-                log("Loading manifest...");
-                const resp = await fetch(manifestFile);
-                if (!resp.ok) throw new Error("Manifest not found: " + manifestFile);
-                const manifest = await resp.json();
-
-                // 2. Abrir Porta
-                log("Select Serial Port...");
-                const port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-
-                // 3. Conectar Bootloader
-                log("Connecting...");
-                const transport = new Transport(port);
-                const loader = new ESPLoader(transport, 115200, null);
-                
-                // Redirecionar logs internos para o nosso terminal
-                loader._log = (l) => log("[ESP] " + l);
-
-                const chip = await loader.main_fn();
-                log(`Chip Detected: ${chip}`);
-
-                // 4. Apagar Flash
-                log("Erasing Flash (this may take a while)...");
-                await loader.erase_flash();
-
-                // 5. Flashar Firmware
-                const file = manifest.builds[0].parts[0];
-                log(`Downloading ${file.path}...`);
-                const binResp = await fetch(file.path);
-                if (!binResp.ok) throw new Error("Firmware file not found");
-                const fileData = await binResp.arrayBuffer();
-
-                log(`Writing ${fileData.byteLength} bytes at 0x${file.offset.toString(16)}...`);
-                
-                await loader.write_flash({
-                    fileArray: [{ data: new Uint8Array(fileData), address: file.offset }],
-                    flash_size: 'keep',
-                    erase_all: false,
-                    compress: true,
-                });
-
-                // 6. Reset
-                log("Resetting device...");
-                await loader.hard_reset();
-                await port.close();
-                
-                log("\n✅ SUCCESS! Device flashed.");
-
-            } catch (e) {
-                log("\n❌ ERROR: " + e.message);
-                console.error(e);
-            }
-        }
-
-        // Ligar os botões às funções (forma correta em modules)
-        document.getElementById('btnStd').addEventListener('click', () => runFlash('manifest_std.json'));
-        document.getElementById('btnC5').addEventListener('click', () => runFlash('manifest_c5.json'));
-        document.getElementById('btnBruce').addEventListener('click', () => runFlash('manifest_bruce.json'));
-
-    </script>
+    <div class="card">
+        <h2>ESP32 Standard</h2>
+        <p>Para DevKit V1, WROOM, WROVER</p>
+        <esp-web-install-button manifest="manifest_std.json"></esp-web-install-button>
+    </div>
+    
+    <div class="card">
+        <h2>M5Stack C5</h2>
+        <p>M5StickC, M5StickC Plus, Cardputer</p>
+        <esp-web-install-button manifest="manifest_c5.json"></esp-web-install-button>
+    </div>
+    
+    <div class="card danger">
+        <h2>🔥 BRUCE S3</h2>
+        <p>⚠️ APENAS Smoochie / ESP32-S3 Zero</p>
+        <esp-web-install-button manifest="manifest_bruce.json"></esp-web-install-button>
+    </div>
+    
+    <p style="margin-top: 50px; color: #666; font-size: 12px;">
+        Powered by ESP Web Tools • Chrome/Edge Required
+    </p>
 </body>
 </html>
