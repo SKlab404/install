@@ -1,14 +1,13 @@
 {
   "name": "Bruce Reaper S3",
-  "version": "Reaper",
+  "version": "v1",
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "parts": [
         {
           "path": "firmware/reaper.bin",
-          "offset": 0x10000,
-          "size": 4194304
+          "offset": 65536
         }
       ]
     }
