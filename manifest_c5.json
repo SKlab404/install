@@ -1,14 +1,12 @@
 {
   "name": "Marauder C5",
-  "version": "v1",
+  "version": "v1.8.5",
+  "new_install_prompt_erase": true,
   "builds": [
     {
-      "chipFamily": "ESP32-C5",
+      "chipFamily": "ESP32",
       "parts": [
-        {
-          "path": "firmware/marauder_c5.bin",
-          "offset": 65536
-        }
+        { "path": "firmware/marauder_c5.bin", "offset": 0 }
       ]
     }
   ]
