@@ -1,0 +1,16 @@
+{
+  "name": "Marauder C5",
+  "version": "2.4.2",
+  "builds": [
+    {
+      "chipFamily": "ESP32",
+      "parts": [
+        {
+          "path": "firmware/marauder_c5.bin",
+          "offset": 0x10000,
+          "size": 1048576
+        }
+      ]
+    }
+  ]
+}
