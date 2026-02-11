@@ -2,116 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CYBER FLASHER SIMPLE</title>
-    <!-- VERSÃO ANTIGA E ROBUSTA -->
-    <script src="https://unpkg.com/esptool-js@0.2.3/bundle.js"></script>
+    <title>CYBER FLASHER MODULAR</title>
     <style>
         body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
-        button { padding: 10px 20px; background: #003300; color: #0f0; border: 1px solid #0f0; cursor: pointer; margin: 5px; font-size: 16px; }
-        button:hover { background: #005500; }
-        #term { width: 100%; height: 400px; background: #111; color: #0f0; border: 1px solid #333; overflow-y: scroll; white-space: pre-wrap; padding: 10px; margin-top: 20px; }
-        .red { color: #f00; }
+        #term { white-space: pre-wrap; }
     </style>
 </head>
 <body>
-    <h1>CYBER FLASHER [SIMPLE MODE]</h1>
-    
-    <button onclick="flash('manifest_std.json')">FLASH STD</button>
-    <button onclick="flash('manifest_c5.json')">FLASH C5</button>
-    <button onclick="flash('manifest_bruce.json')" style="border-color: #f00; color: #f00;">FLASH BRUCE</button>
-    
-    <br><br>
-    <button onclick="connectSerial()">MONITOR SERIAL</button>
-    <button onclick="document.getElementById('term').innerHTML=''">CLEAR</button>
-
+    <h1>CYBER FLASHER [MODULAR]</h1>
+    <button id="btnFlash">FLASH C5</button>
     <div id="term"></div>
 
-    <script>
-        var esploader;
-        var transport;
-        var port;
+    <!-- SCRIPT TIPO MODULE (Importante!) -->
+    <script type="module">
+        // Importa DIRETAMENTE do teu ficheiro local ou do URL completo
+        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js';
 
-        function log(msg) {
-            document.getElementById('term').innerHTML += msg + "\n";
-            document.getElementById('term').scrollTop = document.getElementById('term').scrollHeight;
-        }
+        const term = document.getElementById('term');
+        function log(msg) { term.innerText += msg + "\n"; }
 
-        async function flash(manifestUrl) {
+        document.getElementById('btnFlash').onclick = async () => {
             try {
-                if (port) { await port.close(); port = null; }
+                log("Starting...");
                 
-                log("Loading " + manifestUrl + "...");
-                let resp = await fetch(manifestUrl);
-                let manifest = await resp.json();
+                // 1. Ler Manifest
+                const resp = await fetch('manifest_c5.json');
+                const manifest = await resp.json();
                 
-                log("Select Port...");
-                port = await navigator.serial.requestPort();
+                // 2. Porta
+                const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
                 
-                log("Connecting...");
-                transport = new esptooljs.Transport(port);
-                esploader = new esptooljs.ESPLoader(transport, 115200, esptooljs.ESP_ROM_BAUD, {
-                    clean: () => {},
-                    writeLine: (l) => log(l),
-                    write: (s) => log(s)
-                });
+                // 3. Conectar (Usando as classes importadas)
+                const transport = new Transport(port);
+                const loader = new ESPLoader(transport, 115200, null);
                 
-                await esploader.main_fn();
-                await esploader.flash_id();
+                log("Connecting to bootloader...");
+                const chip = await loader.main_fn();
+                log("Chip: " + chip);
                 
                 log("Erasing...");
-                await esploader.erase_flash();
+                await loader.erase_flash();
                 
-                let file = manifest.builds[0].parts[0];
-                log("Fetching " + file.path + "...");
-                let bin = await fetch(file.path).then(r => r.arrayBuffer());
-                let data = new Uint8Array(bin);
+                // 4. Flash
+                const file = manifest.builds[0].parts[0];
+                log("Downloading " + file.path);
+                const bin = await fetch(file.path).then(r => r.arrayBuffer());
                 
-                log("Writing " + data.length + " bytes...");
-                await esploader.write_flash(
-                    [{ data: data, address: file.offset }],
-                    'keep',
-                    'keep',
-                    false,
-                    true,
-                    (idx, cnt, total) => { if(cnt%10==0) log("Progress: " + Math.round((cnt/total)*100) + "%"); }
-                );
+                log("Writing...");
+                await loader.write_flash({
+                    fileArray: [{ data: new Uint8Array(bin), address: file.offset }],
+                    flash_size: 'keep',
+                    erase_all: false,
+                    compress: true,
+                });
                 
                 log("Resetting...");
-                await transport.setDTR(false);
-                await transport.setRTS(true);
-                await new Promise(r => setTimeout(r, 100));
-                await transport.setRTS(false);
+                await loader.hard_reset();
                 await port.close();
-                port = null;
-                
-                log("DONE! Click MONITOR SERIAL.");
-                
+                log("DONE!");
+
             } catch (e) {
-                log("ERROR: " + e);
+                log("ERROR: " + e.message);
                 console.error(e);
             }
-        }
-
-        async function connectSerial() {
-            try {
-                if (port) { await port.close(); port = null; return; }
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-                log("SERIAL CONNECTED");
-                
-                let decoder = new TextDecoderStream();
-                port.readable.pipeTo(decoder.writable);
-                let reader = decoder.readable.getReader();
-                
-                while (true) {
-                    let { value, done } = await reader.read();
-                    if (done) break;
-                    document.getElementById('term').innerHTML += value;
-                    document.getElementById('term').scrollTop = document.getElementById('term').scrollHeight;
-                }
-            } catch (e) { log("SERIAL ERR: " + e); }
-        }
+        };
     </script>
 </body>
 </html>
