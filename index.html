@@ -2,100 +2,136 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V18 (OFFLINE)</title>
-    <!-- XTERM -->
+    <title>MARAUDER V20 (FINAL)</title>
+    
+    <!-- 1. XTERM (Terminal) -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
-    <!-- O TEU FICHEIRO LOCAL -->
+    <!-- 2. ESPTOOL VIA CDN (O segredo para não falhar) -->
     <script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.min.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; }
-        button { padding: 15px; background: #003300; color: #0f0; border: 1px solid #0f0; margin: 10px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #333; color: #555; }
+        body { background: #050505; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #header { padding: 20px; background: #111; border-bottom: 1px solid #333; text-align: center; }
+        
+        button { 
+            padding: 15px 25px; margin: 0 10px; background: #003300; color: #fff; 
+            border: 1px solid #0f0; cursor: pointer; font-weight: bold; text-transform: uppercase;
+        }
+        button:hover { background: #005500; }
+        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; }
+        
         #term { flex: 1; padding: 10px; }
+        #status { color: #888; font-size: 0.9em; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div style="text-align:center; border-bottom:1px solid #333;">
-        <button onclick="flash('manifest_c5.json')">FLASH C5</button>
-        <button onclick="flash('manifest_std.json')">FLASH STD</button>
-        <button onclick="flash('manifest_bruce.json')" style="color:#f55; border-color:#f55">FLASH BRUCE</button>
+    <div id="header">
+        <button id="btn-c5" onclick="flash('manifest_c5.json')" disabled>A CARREGAR...</button>
+        <button id="btn-std" onclick="flash('manifest_std.json')" disabled>A CARREGAR...</button>
+        <button id="btn-bruce" onclick="flash('manifest_bruce.json')" disabled style="color:#f55; border-color:#f55">BRUCE</button>
+        <div id="status">A ligar aos servidores...</div>
     </div>
 
     <div id="term"></div>
 
     <script>
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
+        // Configuração do Terminal
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true, fontSize: 14 });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
+        window.onresize = () => fit.fit();
 
-        term.writeln('=== V18 OFFLINE MODE ===');
-        
-        // Verificar se carregou
-        if (typeof esptooljs === 'undefined') {
-            term.writeln('\x1b[1;31m> ERRO: O ficheiro "loader.js" não está na pasta!\x1b[0m');
-            term.writeln('> 1. Vai a https://unpkg.com/esptool-js@0.5.4/bundle.js');
-            term.writeln('> 2. Copia tudo e guarda como "loader.js" ao lado deste html.');
-        } else {
-            term.writeln('\x1b[1;32m> BIBLIOTECA DETETADA LOCALMENTE!\x1b[0m');
+        term.writeln('=== MARAUDER V20 (DIAGNÓSTICO) ===');
+
+        // Verificar biblioteca com tentativas
+        let attempts = 0;
+        const checkLib = setInterval(() => {
+            attempts++;
+            if (typeof esptooljs !== 'undefined') {
+                clearInterval(checkLib);
+                term.writeln('\x1b[1;32m> SUCESSO: Biblioteca carregada via CDN!\x1b[0m');
+                document.getElementById('status').innerText = "SISTEMA PRONTO";
+                enableButtons();
+            } else if (attempts > 10) {
+                clearInterval(checkLib);
+                term.writeln('\x1b[1;31m> ERRO CRÍTICO: O CDN não respondeu.\x1b[0m');
+                term.writeln('> Verifica a tua ligação à internet ou firewall.');
+            }
+        }, 500);
+
+        function enableButtons() {
+            document.querySelectorAll('button').forEach(b => {
+                b.disabled = false;
+                b.innerText = b.innerText.replace("A CARREGAR...", "FLASH");
+            });
         }
 
         async function flash(manifestUrl) {
-            if (typeof esptooljs === 'undefined') return alert("Falta o loader.js!");
+            if (typeof esptooljs === 'undefined') return alert("Erro: Biblioteca em falta.");
+            
+            const btns = document.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
 
             try {
-                term.writeln(`\n> Lendo ${manifestUrl}...`);
-                const manifest = await fetch(manifestUrl).then(r => r.json());
+                term.writeln(`\n> [1/4] A ler ficheiro: ${manifestUrl}...`);
+                const manifest = await fetch(manifestUrl).then(r => {
+                    if (!r.ok) throw new Error(`Ficheiro não encontrado: ${manifestUrl} (Erro 404)`);
+                    return r.json();
+                });
 
-                term.writeln('> Porta Serial...');
+                term.writeln('> [2/4] Escolhe a porta USB...');
                 const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
-                term.writeln('> Conectando...');
+                term.writeln('> [3/4] A conectar...');
                 const transport = new esptooljs.Transport(port);
-                
-                // NOTA: No bundle antigo, usa-se loader.main_fn() e não o objeto de opções novo
-                const loader = new esptooljs.ESPLoader(transport, 115200, null);
+                const loader = new esptooljs.ESPLoader({
+                    transport: transport,
+                    baudrate: 115200,
+                    terminal: {
+                        clean: () => term.clear(),
+                        writeLine: (d) => term.writeln(d),
+                        write: (d) => term.write(d)
+                    }
+                });
 
-                // Redirecionar Logs
-                loader.debug = (s) => term.writeln('  [DBG] ' + s);
-                loader.info = (s) => term.writeln('  [INF] ' + s);
+                const chip = await loader.main_fn();
+                term.writeln(`> Chip Detetado: ${chip}`);
 
-                await loader.main_fn();
-                term.writeln('> Apagando Flash...');
+                term.writeln('> [4/4] A Flashear (Isto apaga tudo!)...');
                 await loader.erase_flash();
 
                 for (let part of manifest.builds[0].parts) {
-                    term.writeln(`> Escrevendo ${part.path}...`);
+                    term.writeln(`  -> A gravar ${part.path}...`);
                     const bin = await fetch(part.path).then(r => r.arrayBuffer());
-                    
                     await loader.write_flash({
                         fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
                         flash_size: 'keep',
                         erase_all: false,
                         compress: true,
-                        reportProgress: (i, w, t) => {
-                             term.write('.'); // Progresso simples
-                        }
+                        reportProgress: (i, w, t) => {} 
                     });
-                    term.writeln(' OK');
                 }
 
+                term.writeln('\n> [FIM] SUCESSO! Reinicia o Marauder.');
                 await loader.hard_reset();
                 await port.close();
-                term.writeln('\n> FEITO! REINICIA O MARAUDER.');
 
             } catch (e) {
-                term.writeln(`\n> ERRO: ${e.message}`);
+                term.writeln(`\n\x1b[1;31m> ERRO: ${e.message}\x1b[0m`);
+                if (e.message.includes("404")) {
+                    term.writeln('> DICA: O ficheiro .json não está na mesma pasta que o index.html!');
+                }
+            } finally {
+                btns.forEach(b => b.disabled = false);
             }
         }
     </script>
 </body>
 </html>
-
