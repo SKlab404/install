@@ -2,27 +2,18 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V31 (UNLOCKER)</title>
+    <title>MARAUDER V32 (SMART OPEN)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #1a0505; color: #ff4444; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        
-        #header { padding: 20px; background: #2a0a0a; border-bottom: 2px solid #800; text-align: center; }
-        
-        button { 
-            padding: 15px 25px; margin: 0 10px; 
-            background: #400; color: #fbb; border: 1px solid #f00; 
-            cursor: pointer; font-weight: bold; font-family: monospace; text-transform: uppercase;
-        }
-        button:hover { background: #800; box-shadow: 0 0 15px #f00; }
-        button:disabled { background: #211; color: #533; border-color: #422; box-shadow: none; }
-        
-        #btn-forget { background: #fa0; color: #000; border-color: #fa0; }
-        
+        body { background: #0d0d0d; color: #00ff00; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #header { padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; text-align: center; }
+        button { padding: 15px 25px; margin: 0 10px; background: #004400; color: #fff; border: 1px solid #0f0; cursor: pointer; font-weight: bold; }
+        button:hover { background: #006600; }
+        button:disabled { background: #222; color: #555; border-color: #444; }
         #term { flex: 1; padding: 10px; }
     </style>
 </head>
@@ -31,10 +22,8 @@
     <div id="header">
         <button id="btn-c5" onclick="flash('manifest_c5.json')" disabled>A CARREGAR...</button>
         <button id="btn-std" onclick="flash('manifest_std.json')" disabled>A CARREGAR...</button>
-        <button id="btn-bruce" onclick="flash('manifest_bruce.json')" disabled style="color:#fff; border-color:#fff">BRUCE</button>
-        
-        <!-- BOTÃO DE PÂNICO -->
-        <button id="btn-forget" onclick="revokePermissions()">🧹 ESQUECER PORTAS</button>
+        <button id="btn-bruce" onclick="flash('manifest_bruce.json')" disabled style="color:#f55; border-color:#f55">BRUCE</button>
+        <button onclick="location.reload()" style="background:#550000; border-color:#ff0000;">RESET PAGINA</button>
     </div>
 
     <div id="term"></div>
@@ -45,46 +34,20 @@
         window.Transport = esptool.Transport;
         window.libReady = true;
         if (window.term) {
-            window.term.writeln('\x1b[1;31m> V31 (RED ALERT) - PRONTO.\x1b[0m');
+            window.term.writeln('\x1b[1;32m> V32 PRONTA. Lógica "Smart Open" ativa.\x1b[0m');
             enableButtons();
         }
     </script>
 
     <script>
-        const term = new Terminal({ theme: { background: '#1a0505', foreground: '#ff4444', cursor: '#f00' }, cursorBlink: true, fontSize: 14 });
+        const term = new Terminal({ theme: { background: '#0d0d0d', foreground: '#0f0' }, cursorBlink: true, fontSize: 14 });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V31 ===');
-        term.writeln('> A verificar portas presas...');
-
-        // TENTATIVA AUTOMÁTICA DE DESBLOQUEIO AO INICIAR
-        async function unlockPorts() {
-            if (!navigator.serial) return;
-            const ports = await navigator.serial.getPorts();
-            if (ports.length > 0) {
-                term.writeln(`> Detetadas ${ports.length} portas na memória.`);
-                for (const port of ports) {
-                    try { await port.close(); term.writeln('> Porta antiga fechada.'); } catch(e) {}
-                }
-            } else {
-                term.writeln('> Nenhuma porta presa detetada.');
-            }
-        }
-        unlockPorts();
-
-        // FUNÇÃO PARA "ESQUECER" PERMISSÕES (Reseta a conexão do browser)
-        async function revokePermissions() {
-            const ports = await navigator.serial.getPorts();
-            for (const port of ports) {
-                await port.forget();
-            }
-            alert("Portas esquecidas. A página vai recarregar.");
-            location.reload();
-        }
+        term.writeln('=== MARAUDER V32 ===');
 
         const check = setInterval(() => {
             if (window.libReady) { clearInterval(check); enableButtons(); }
@@ -92,18 +55,20 @@
 
         function enableButtons() {
             if(document.getElementById('btn-c5').innerText !== "A CARREGAR...") return;
-            document.querySelectorAll('button:not(#btn-forget)').forEach(b => {
-                b.disabled = false;
-                b.innerText = b.innerText.replace("A CARREGAR...", "FLASH");
+            document.querySelectorAll('button').forEach(b => {
+                if(b.innerText !== "RESET PAGINA") {
+                    b.disabled = false;
+                    b.innerText = b.innerText.replace("A CARREGAR...", "FLASH");
+                }
             });
         }
 
         async function flash(manifestUrl) {
-            const btns = document.querySelectorAll('button:not(#btn-forget)');
-            btns.forEach(b => b.disabled = true);
+            const btns = document.querySelectorAll('button');
+            btns.forEach(b => { if(b.innerText !== "RESET PAGINA") b.disabled = true; });
 
             try {
-                term.writeln(`\n> [1] Manifesto...`);
+                term.writeln(`\n> [1] Manifesto: ${manifestUrl}...`);
                 let manifest;
                 try {
                     manifest = await fetch(manifestUrl).then(r => { if(!r.ok) throw new Error(); return r.json(); });
@@ -112,22 +77,27 @@
                 }
 
                 term.writeln('> [2] Porta Serial...');
-                let port;
-                try {
-                    // Tenta pedir porta nova
-                    port = await navigator.serial.requestPort();
-                    await port.open({ baudRate: 115200 });
-                } catch (e) {
-                    if (e.message.includes("already open")) {
-                        term.writeln('\n\x1b[1;33m>>> PORTA BLOQUEADA! Tenta isto: <<<\x1b[0m');
-                        term.writeln('1. Clica no botão laranja "ESQUECER PORTAS".');
-                        term.writeln('2. Se não der, FECHA ESTA ABA e abre de novo.');
-                        term.writeln('3. Último recurso: Reinicia o PC.');
-                        throw new Error("Porta presa (Zombie Port).");
-                    } else {
-                        throw e;
+                
+                // --- LÓGICA NOVA V32 ---
+                const port = await navigator.serial.requestPort();
+                
+                // Verificação Inteligente:
+                if (port.readable || port.writable) {
+                    term.writeln('\x1b[1;33m> Porta detetada como JÁ ABERTA. Reutilizando conexão...\x1b[0m');
+                    // Não chamamos port.open()!
+                } else {
+                    term.writeln('> Porta fechada. A abrir...');
+                    try {
+                        await port.open({ baudRate: 115200 });
+                    } catch (e) {
+                        if (e.message.includes("already open")) {
+                             term.writeln('\x1b[1;33m> Erro ignorado: O browser mentiu, a porta já estava aberta.\x1b[0m');
+                        } else {
+                            throw e;
+                        }
                     }
                 }
+                // -----------------------
 
                 term.writeln('> [3] Conectando...');
                 const transport = new window.Transport(port);
@@ -143,12 +113,10 @@
 
                 let chipName = "DESCONHECIDO";
                 try {
-                    // Tenta main() primeiro (v0.5.6)
                     if (typeof loader.main === "function") chipName = await loader.main();
                     else if (typeof loader.main_fn === "function") chipName = await loader.main_fn();
                     else { await loader.connect(); chipName = "Stub"; }
                 } catch (e) {
-                    // Hack para C5
                     if (e.message.includes("Unknown Chip") || e.message.includes("0x5fd1406f")) {
                         term.writeln('\x1b[1;33m> Chip C5 detetado! Forçando...\x1b[0m');
                         chipName = "ESP32-C5 (Forced)";
@@ -181,12 +149,14 @@
 
                 term.writeln('\n> [SUCESSO] Reinicia o dispositivo!');
                 await loader.hard_reset();
-                await port.close();
+                
+                // Na V32, tentamos fechar simpaticamente
+                try { await port.close(); } catch(e) {}
 
             } catch (e) {
                 term.writeln(`\n\x1b[1;31m> ERRO: ${e.message}\x1b[0m`);
             } finally {
-                btns.forEach(b => b.disabled = false);
+                btns.forEach(b => { if(b.innerText !== "RESET PAGINA") b.disabled = false; });
             }
         }
     </script>
