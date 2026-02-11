@@ -2,71 +2,108 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CYBER FLASHER MODULAR</title>
+    <title>CYBER FLASHER FINAL</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
-        #term { white-space: pre-wrap; }
+        body { background: #000; color: #00ff41; font-family: monospace; padding: 20px; text-align: center; }
+        button { padding: 15px 30px; font-size: 18px; background: #003300; color: #0f0; border: 2px solid #0f0; cursor: pointer; margin: 10px; }
+        button:hover { background: #005500; }
+        #term { 
+            width: 80%; margin: 20px auto; height: 300px; 
+            background: #111; border: 1px solid #333; 
+            overflow-y: scroll; text-align: left; padding: 10px; 
+            white-space: pre-wrap; font-family: 'Courier New', monospace;
+        }
     </style>
 </head>
 <body>
-    <h1>CYBER FLASHER [MODULAR]</h1>
-    <button id="btnFlash">FLASH C5</button>
-    <div id="term"></div>
+    <h1>🕷️ CYBER FLASHER 🕷️</h1>
+    
+    <!-- Botões com IDs para serem apanhados pelo script -->
+    <button id="btnStd">FLASH STD</button>
+    <button id="btnC5">FLASH C5</button>
+    <button id="btnBruce" style="border-color: red; color: red;">FLASH BRUCE</button>
 
-    <!-- SCRIPT TIPO MODULE (Importante!) -->
+    <div id="term">Ready. Click a button.</div>
+
+    <!-- SCRIPT MÓDULO (IMPORTAÇÃO CORRETA) -->
     <script type="module">
-        // Importa DIRETAMENTE do teu ficheiro local ou do URL completo
-        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js';
+        // Importa as classes necessárias
+        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.4.2/lib/index.js';
 
         const term = document.getElementById('term');
-        function log(msg) { term.innerText += msg + "\n"; }
+        function log(msg) { 
+            term.innerText += msg + "\n"; 
+            term.scrollTop = term.scrollHeight;
+        }
 
-        document.getElementById('btnFlash').onclick = async () => {
+        async function runFlash(manifestFile) {
             try {
-                log("Starting...");
+                if (!navigator.serial) {
+                    return log("ERROR: Web Serial not supported in this browser. Use Chrome/Edge.");
+                }
+
+                log(`\n--- STARTING ${manifestFile} ---`);
                 
                 // 1. Ler Manifest
-                const resp = await fetch('manifest_c5.json');
+                log("Loading manifest...");
+                const resp = await fetch(manifestFile);
+                if (!resp.ok) throw new Error("Manifest not found: " + manifestFile);
                 const manifest = await resp.json();
-                
-                // 2. Porta
+
+                // 2. Abrir Porta
+                log("Select Serial Port...");
                 const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
-                
-                // 3. Conectar (Usando as classes importadas)
+
+                // 3. Conectar Bootloader
+                log("Connecting...");
                 const transport = new Transport(port);
                 const loader = new ESPLoader(transport, 115200, null);
                 
-                log("Connecting to bootloader...");
+                // Redirecionar logs internos para o nosso terminal
+                loader._log = (l) => log("[ESP] " + l);
+
                 const chip = await loader.main_fn();
-                log("Chip: " + chip);
-                
-                log("Erasing...");
+                log(`Chip Detected: ${chip}`);
+
+                // 4. Apagar Flash
+                log("Erasing Flash (this may take a while)...");
                 await loader.erase_flash();
-                
-                // 4. Flash
+
+                // 5. Flashar Firmware
                 const file = manifest.builds[0].parts[0];
-                log("Downloading " + file.path);
-                const bin = await fetch(file.path).then(r => r.arrayBuffer());
+                log(`Downloading ${file.path}...`);
+                const binResp = await fetch(file.path);
+                if (!binResp.ok) throw new Error("Firmware file not found");
+                const fileData = await binResp.arrayBuffer();
+
+                log(`Writing ${fileData.byteLength} bytes at 0x${file.offset.toString(16)}...`);
                 
-                log("Writing...");
                 await loader.write_flash({
-                    fileArray: [{ data: new Uint8Array(bin), address: file.offset }],
+                    fileArray: [{ data: new Uint8Array(fileData), address: file.offset }],
                     flash_size: 'keep',
                     erase_all: false,
                     compress: true,
                 });
-                
-                log("Resetting...");
+
+                // 6. Reset
+                log("Resetting device...");
                 await loader.hard_reset();
                 await port.close();
-                log("DONE!");
+                
+                log("\n✅ SUCCESS! Device flashed.");
 
             } catch (e) {
-                log("ERROR: " + e.message);
+                log("\n❌ ERROR: " + e.message);
                 console.error(e);
             }
-        };
+        }
+
+        // Ligar os botões às funções (forma correta em modules)
+        document.getElementById('btnStd').addEventListener('click', () => runFlash('manifest_std.json'));
+        document.getElementById('btnC5').addEventListener('click', () => runFlash('manifest_c5.json'));
+        document.getElementById('btnBruce').addEventListener('click', () => runFlash('manifest_bruce.json'));
+
     </script>
 </body>
 </html>
