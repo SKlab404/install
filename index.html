@@ -2,227 +2,116 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CYBER FLASHER PRO</title>
-    
-    <!-- VERSÃO COMPROVADA (Adafruit/Espressif) -->
-    <script type="module">
-        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.4.2/lib/index.js';
-        window.Transport = Transport;
-        window.ESPLoader = ESPLoader;
-    </script>
-    
-    <!-- XTERM.JS -->
-    <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
-    <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
-    <script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <title>CYBER FLASHER SIMPLE</title>
+    <!-- VERSÃO ANTIGA E ROBUSTA -->
+    <script src="https://unpkg.com/esptool-js@0.2.3/bundle.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=VT323&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #00ff41; font-family: 'Orbitron', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        #intro-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 1s ease-out; }
-        .intro-text { font-size: 30px; letter-spacing: 5px; text-shadow: 0 0 20px #00ff41; animation: blink 2s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-        header { padding: 15px 30px; background: #001100; border-bottom: 2px solid #00ff41; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; text-shadow: 0 0 10px #00ff41; }
-        
-        main { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 320px; background: rgba(0,20,0,0.95); border-right: 1px solid #333; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        .terminal-container { flex: 1; background: #000; padding: 10px; display: flex; flex-direction: column; }
-        #terminal { flex: 1; }
-        
-        .cyber-btn { background: rgba(0, 50, 0, 0.4); border: 1px solid #00ff41; color: #fff; padding: 15px; cursor: pointer; text-align: left; transition: 0.2s; font-family: 'Orbitron'; }
-        .cyber-btn:hover { background: rgba(0, 255, 65, 0.2); border-left: 5px solid #00ff41; padding-left: 10px; }
-        .btn-title { display: block; font-size: 16px; font-weight: bold; color: #00ff41; margin-bottom: 3px; }
-        .btn-desc { display: block; font-size: 12px; color: #aaa; font-family: 'VT323'; }
-        .danger { border-color: #ff0055; } .danger .btn-title { color: #ff0055; }
-        .danger:hover { background: rgba(255, 0, 85, 0.15); border-left-color: #ff0055; }
-
-        .controls { padding: 10px; background: #111; display: flex; gap: 10px; border-top: 1px solid #333; }
-        input { flex: 1; background: #000; border: 1px solid #333; color: #00ff41; padding: 10px; font-family: 'VT323'; font-size: 16px; outline: none; }
-        .action-btn { background: #333; color: #fff; border: 1px solid #555; padding: 0 20px; cursor: pointer; font-weight: bold; }
-        .connect-btn { background: #00ff41; color: #000; border: none; }
-        .disconnect { background: #ff0055 !important; color: #fff !important; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        button { padding: 10px 20px; background: #003300; color: #0f0; border: 1px solid #0f0; cursor: pointer; margin: 5px; font-size: 16px; }
+        button:hover { background: #005500; }
+        #term { width: 100%; height: 400px; background: #111; color: #0f0; border: 1px solid #333; overflow-y: scroll; white-space: pre-wrap; padding: 10px; margin-top: 20px; }
+        .red { color: #f00; }
     </style>
 </head>
 <body>
-    <div id="intro-overlay" onclick="startSystem()">
-        <div class="intro-text">SYSTEM OFFLINE</div>
-        <div style="margin-top: 20px; font-family: 'VT323'; font-size: 18px; color: #666;">[ CLICK TO INITIALIZE ]</div>
-    </div>
+    <h1>CYBER FLASHER [SIMPLE MODE]</h1>
+    
+    <button onclick="flash('manifest_std.json')">FLASH STD</button>
+    <button onclick="flash('manifest_c5.json')">FLASH C5</button>
+    <button onclick="flash('manifest_bruce.json')" style="border-color: #f00; color: #f00;">FLASH BRUCE</button>
+    
+    <br><br>
+    <button onclick="connectSerial()">MONITOR SERIAL</button>
+    <button onclick="document.getElementById('term').innerHTML=''">CLEAR</button>
 
-    <header>
-        <div class="logo"><i class="fas fa-microchip"></i> CYBER DECK</div>
-        <div style="font-size: 12px; color: #666;">READY TO FLASH</div>
-    </header>
-
-    <main>
-        <div class="sidebar">
-            <h3 style="color: #fff; opacity: 0.5; font-size: 12px;">SELECT TARGET</h3>
-            <button class="cyber-btn" onclick="flash('manifest_std.json')">
-                <span class="btn-title">MARAUDER STD</span>
-                <span class="btn-desc">ESP32 WROOM / DEV KIT</span>
-            </button>
-            <button class="cyber-btn" onclick="flash('manifest_c5.json')">
-                <span class="btn-title">MARAUDER C5</span>
-                <span class="btn-desc">M5STICK / CARDPUTER</span>
-            </button>
-            <button class="cyber-btn danger" onclick="flash('manifest_bruce.json')">
-                <span class="btn-title">🔥 BRUCE REAPER</span>
-                <span class="btn-desc">S3 ZERO / SMOOCHIE ONLY</span>
-            </button>
-        </div>
-
-        <div class="terminal-container">
-            <div id="terminal"></div>
-            <div class="controls">
-                <button id="connectBtn" class="action-btn connect-btn">CONNECT SERIAL</button>
-                <input id="cmdInput" placeholder="Enter command..." disabled>
-                <button id="clearBtn" class="action-btn">CLR</button>
-            </div>
-        </div>
-    </main>
+    <div id="term"></div>
 
     <script>
-        let port, reader, writer, readableStreamClosed, writableStreamClosed;
+        var esploader;
+        var transport;
+        var port;
 
-        function startSystem() {
-            const overlay = document.getElementById('intro-overlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.remove(), 1000);
-            new Audio('intro.mp3').play().catch(()=>{});
-        }
-
-        const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14, convertEol: true });
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(document.getElementById('terminal'));
-        fitAddon.fit();
-        window.onresize = () => fitAddon.fit();
-        term.writeln('> SYSTEM ONLINE. WAITING FOR COMMAND...');
-
-        async function closePort() {
-            if (port) {
-                try {
-                    if (reader) { await reader.cancel(); await readableStreamClosed.catch(()=>{}); reader = null; }
-                    if (writer) { await writer.close(); await writableStreamClosed.catch(()=>{}); writer = null; }
-                    await port.close();
-                } catch (e) {}
-                port = null;
-                document.getElementById('connectBtn').innerText = 'CONNECT SERIAL';
-                document.getElementById('connectBtn').classList.remove('disconnect');
-                term.writeln('> PORT CLOSED.');
-            }
+        function log(msg) {
+            document.getElementById('term').innerHTML += msg + "\n";
+            document.getElementById('term').scrollTop = document.getElementById('term').scrollHeight;
         }
 
         async function flash(manifestUrl) {
             try {
-                if (!window.ESPLoader) { throw new Error("ESPLoader not loaded! Refresh page."); }
-
-                await closePort();
-
-                term.writeln(`\n> Loading ${manifestUrl}...`);
-                const resp = await fetch(manifestUrl);
-                if (!resp.ok) throw new Error(`Manifest error: ${resp.status}`);
-                const manifest = await resp.json();
-
-                term.writeln(`> Target: ${manifest.name}`);
-                term.writeln('> Requesting serial port...');
+                if (port) { await port.close(); port = null; }
                 
+                log("Loading " + manifestUrl + "...");
+                let resp = await fetch(manifestUrl);
+                let manifest = await resp.json();
+                
+                log("Select Port...");
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
-
-                term.writeln('> Connecting to bootloader...');
                 
-                // USAR CLASSES GLOBAIS
-                const transport = new Transport(port);
-                const esploader = new ESPLoader(transport, 115200, null);
+                log("Connecting...");
+                transport = new esptooljs.Transport(port);
+                esploader = new esptooljs.ESPLoader(transport, 115200, esptooljs.ESP_ROM_BAUD, {
+                    clean: () => {},
+                    writeLine: (l) => log(l),
+                    write: (s) => log(s)
+                });
                 
-                const chip = await esploader.main_fn(); // main_fn() é a função correta no 0.4.2 module
-                term.writeln(`> Chip Detected: ${chip}`);
+                await esploader.main_fn();
+                await esploader.flash_id();
                 
-                term.writeln('> Erasing flash...');
-                await esploader.erase_flash(); // erase_flash() no 0.4.2 module
-
-                const fileItem = manifest.builds[0].parts[0];
-                term.writeln(`> Fetching: ${fileItem.path}`);
-                const binResp = await fetch(fileItem.path);
-                if (!binResp.ok) throw new Error('Firmware file not found');
-                const fileData = await binResp.arrayBuffer();
+                log("Erasing...");
+                await esploader.erase_flash();
                 
-                term.writeln(`> Writing ${fileData.byteLength} bytes...`);
-                // write_flash no 0.4.2 module
+                let file = manifest.builds[0].parts[0];
+                log("Fetching " + file.path + "...");
+                let bin = await fetch(file.path).then(r => r.arrayBuffer());
+                let data = new Uint8Array(bin);
+                
+                log("Writing " + data.length + " bytes...");
                 await esploader.write_flash(
-                    {
-                        fileArray: [{ data: new Uint8Array(fileData), address: fileItem.offset }],
-                        flash_size: 'keep',
-                        erase_all: false,
-                        compress: true,
-                    },
-                    {
-                        reportProgress: (fileIndex, written, total) => {
-                             term.write(`\r> Progress: ${Math.round((written/total)*100)}%`);
-                        },
-                    }
+                    [{ data: data, address: file.offset }],
+                    'keep',
+                    'keep',
+                    false,
+                    true,
+                    (idx, cnt, total) => { if(cnt%10==0) log("Progress: " + Math.round((cnt/total)*100) + "%"); }
                 );
-
-                term.writeln('\n> Resetting...');
-                await esploader.hard_reset();
+                
+                log("Resetting...");
+                await transport.setDTR(false);
+                await transport.setRTS(true);
+                await new Promise(r => setTimeout(r, 100));
+                await transport.setRTS(false);
                 await port.close();
                 port = null;
-
-                term.writeln('\x1b[1;32m\n> ✓ FLASH COMPLETE!\x1b[0m');
-
+                
+                log("DONE! Click MONITOR SERIAL.");
+                
             } catch (e) {
-                term.writeln(`\n\x1b[1;31m> ERROR: ${e.message}\x1b[0m`);
+                log("ERROR: " + e);
                 console.error(e);
             }
         }
 
-        const connectBtn = document.getElementById('connectBtn');
-        const cmdInput = document.getElementById('cmdInput');
-
-        connectBtn.onclick = async () => {
-            if (port) { await closePort(); return; }
-            
+        async function connectSerial() {
             try {
+                if (port) { await port.close(); port = null; return; }
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
+                log("SERIAL CONNECTED");
                 
-                term.writeln('\n\x1b[1;32m> SERIAL CONNECTED (115200)\x1b[0m');
-                connectBtn.innerText = 'DISCONNECT';
-                connectBtn.classList.add('disconnect');
-                cmdInput.disabled = false;
-                cmdInput.focus();
-
-                const textDecoder = new TextDecoderStream();
-                readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-                reader = textDecoder.readable.getReader();
+                let decoder = new TextDecoderStream();
+                port.readable.pipeTo(decoder.writable);
+                let reader = decoder.readable.getReader();
                 
-                const textEncoder = new TextEncoderStream();
-                writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-                writer = textEncoder.writable.getWriter();
-
                 while (true) {
-                    const { value, done } = await reader.read();
+                    let { value, done } = await reader.read();
                     if (done) break;
-                    term.write(value);
+                    document.getElementById('term').innerHTML += value;
+                    document.getElementById('term').scrollTop = document.getElementById('term').scrollHeight;
                 }
-            } catch (e) { term.writeln(`\n> SERIAL ERROR: ${e.message}`); }
-        };
-
-        cmdInput.onkeydown = async (e) => {
-            if (e.key === 'Enter' && writer) {
-                await writer.write(cmdInput.value + '\r\n');
-                cmdInput.value = '';
-            }
-        };
-
-        document.getElementById('clearBtn').onclick = () => term.clear();
+            } catch (e) { log("SERIAL ERR: " + e); }
+        }
     </script>
 </body>
 </html>
