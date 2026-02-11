@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V27 (C5 FINAL)</title>
+    <title>MARAUDER V28 (FINAL FIX)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
@@ -32,9 +32,8 @@
         window.ESPLoader = esptool.ESPLoader;
         window.Transport = esptool.Transport;
         window.libReady = true;
-        
         if (window.term) {
-            window.term.writeln('\x1b[1;32m> V27 PRONTA (Modo C5)\x1b[0m');
+            window.term.writeln('\x1b[1;32m> SISTEMA PRONTO (V28)\x1b[0m');
             enableButtons();
         }
     </script>
@@ -47,7 +46,7 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V27 ===');
+        term.writeln('=== MARAUDER V28 ===');
         let currentPort = null;
 
         const check = setInterval(() => {
@@ -67,7 +66,7 @@
             btns.forEach(b => b.disabled = true);
 
             try {
-                // 1. Limpeza de porta
+                // 1. LIMPEZA DE PORTA
                 if (currentPort) {
                     try { await currentPort.close(); } catch(e) {}
                     currentPort = null;
@@ -97,24 +96,34 @@
                     }
                 });
 
-                // Tenta detectar o chip
+                // --- CORREÇÃO INTELIGENTE (Auto-Deteção de Função) ---
                 let chipName = "DESCONHECIDO";
                 try {
-                    // *** CORREÇÃO: USAR main() ***
-                    chipName = await loader.main();
+                    if (typeof loader.main === "function") {
+                        term.writeln('> [DEBUG] Usando loader.main()');
+                        chipName = await loader.main();
+                    } else if (typeof loader.main_fn === "function") {
+                        term.writeln('> [DEBUG] Usando loader.main_fn()');
+                        chipName = await loader.main_fn();
+                    } else {
+                        // Último recurso: conectar manualmente sem identificação completa
+                        term.writeln('> [DEBUG] Função main não encontrada. Tentando stub manual...');
+                        await loader.connect(); 
+                        chipName = "Genérico (Stub)";
+                    }
                 } catch (e) {
-                    // Se der erro de chip desconhecido (o tal hex 0x5f...), ignoramos!
+                    // Ignorar erro de Chip Desconhecido (C5)
                     if (e.message.includes("Unknown Chip") || e.message.includes("0x5fd1406f") || e.message.includes("1607549039")) {
-                        term.writeln('\x1b[1;33m> AVISO: Chip C5 detetado (não oficial). Forçando flash...\x1b[0m');
+                        term.writeln('\x1b[1;33m> AVISO: Chip C5 não oficial detetado. Forçando continuação!\x1b[0m');
                         chipName = "ESP32-C5 (Forced)";
                     } else {
-                        throw e; // Outros erros (ex: porta ocupada) mandam parar
+                        throw e;
                     }
                 }
                 
                 term.writeln(`> Chip: ${chipName}`);
                 
-                term.writeln('> [4] A APAGAR FLASH...');
+                term.writeln('> [4] A APAGAR FLASH (Aguarda)...');
                 await loader.erase_flash();
 
                 term.writeln('> [5] A ESCREVER...');
