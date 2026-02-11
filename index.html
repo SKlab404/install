@@ -2,49 +2,179 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER INSTALLER</title>
-    <!-- Carrega a ferramenta oficial, sem invenções -->
-    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    <title>MARAUDER TERMINAL FLASHER</title>
+    
+    <!-- 1. Xterm (Visual do Terminal) -->
+    <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
+    <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
+    <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
+
+    <!-- 2. ESPTool-JS (Versão Clássica v0.2.2 - Mais estável para globals) -->
+    <script src="https://unpkg.com/esptool-js@0.2.2/lib/index.js"></script>
+
     <style>
-        body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { margin-bottom: 2rem; }
-        .card { background: #222; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-align: center; width: 300px; }
+        body { background: #050505; color: #0f0; font-family: 'Courier New', monospace; display: flex; height: 100vh; margin: 0; overflow: hidden; }
         
-        esp-web-install-button {
-            display: block;
-            margin: 10px 0;
-            --esp-tools-button-color: #00ff41; /* Verde Hacker */
-            --esp-tools-button-text-color: #000;
+        #sidebar { width: 280px; background: #111; padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
+        #terminal-container { flex: 1; background: #000; padding: 15px; box-sizing: border-box; }
+        
+        h2 { margin: 0 0 15px 0; color: #fff; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 1.2rem; }
+        
+        button {
+            width: 100%; padding: 15px; 
+            background: #002200; color: #0f0; border: 1px solid #0f0;
+            cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
+            transition: all 0.2s;
         }
+        button:hover { background: #004400; box-shadow: 0 0 8px #0f0; }
+        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; box-shadow: none; }
+        
+        #status-area { margin-top: auto; text-align: center; font-size: 0.9em; color: #888; }
+        .progress-bar { width: 100%; height: 4px; background: #333; margin-top: 10px; }
+        .progress-fill { width: 0%; height: 100%; background: #0f0; transition: width 0.2s; }
     </style>
 </head>
 <body>
 
-    <h1>MARAUDER FLASHER</h1>
-
-    <div class="card">
-        <h3>ESCOLHE A VERSÃO</h3>
+    <div id="sidebar">
+        <h2>FLASHER V12</h2>
         
-        <!-- Botão Oficial -->
-        <esp-web-install-button 
-            manifest="manifest_c5.json">
-            <button slot="activate">INSTALL C5 (BETA)</button>
-        </esp-web-install-button>
-
-        <esp-web-install-button 
-            manifest="manifest_std.json">
-            <button slot="activate">INSTALL STD</button>
-        </esp-web-install-button>
-
-        <esp-web-install-button 
-            manifest="manifest_bruce.json">
-            <button slot="activate" style="background:red; color:white;">INSTALL BRUCE</button>
-        </esp-web-install-button>
-
-        <p style="font-size:0.8em; color:#888; margin-top:20px;">
-            DICA: No popup, clica em "LOGS" para ver o progresso real.
-        </p>
+        <button id="btn-c5" onclick="startFlash('manifest_c5.json')">FLASH C5 (BETA)</button>
+        <button id="btn-std" onclick="startFlash('manifest_std.json')">FLASH STD</button>
+        <button id="btn-bruce" onclick="startFlash('manifest_bruce.json')" style="border-color:#f00; color:#f00;">FLASH BRUCE</button>
+        
+        <div id="status-area">
+            <div id="status-text">SYSTEM READY</div>
+            <div class="progress-bar"><div id="p-fill" class="progress-fill"></div></div>
+        </div>
     </div>
 
+    <div id="terminal-container"></div>
+
+    <script>
+        // 1. Configurar Terminal
+        const term = new Terminal({ 
+            theme: { background: '#000', foreground: '#00ff41', cursor: '#0f0' }, 
+            fontFamily: 'Courier New, monospace', 
+            fontSize: 14,
+            cursorBlink: true,
+            convertEol: true 
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal-container'));
+        fitAddon.fit();
+        window.addEventListener('resize', () => fitAddon.fit());
+
+        term.writeln('\x1b[1;32m=== MARAUDER TERMINAL FLASHER (V12) ===\x1b[0m');
+        term.writeln('Initializing ESPTool Environment...');
+
+        // 2. Verificar se a lib carregou
+        let esploader;
+        window.onload = function() {
+            if (typeof ESPLoader !== 'undefined') {
+                term.writeln('ESPTool Library Loaded: \x1b[1;32mOK\x1b[0m');
+            } else {
+                term.writeln('ESPTool Library Loaded: \x1b[1;31mFAILED\x1b[0m');
+                term.writeln('Check internet connection or refresh page.');
+            }
+        };
+
+        // 3. Função Principal de Flash
+        async function startFlash(manifestUrl) {
+            const btns = document.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+
+            try {
+                // Passo A: Ler Manifesto
+                term.writeln(`\n\x1b[1;34m[INIT]\x1b[0m Fetching manifest: ${manifestUrl}...`);
+                const resp = await fetch(manifestUrl);
+                if (!resp.ok) throw new Error(`Manifest error: ${resp.status}`);
+                const manifest = await resp.json();
+
+                // Passo B: Abrir Porta Serial
+                term.writeln('\x1b[1;34m[USER]\x1b[0m Please select serial port...');
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                // Passo C: Ligar ao ESP32
+                term.writeln('\x1b[1;34m[CONN]\x1b[0m Connecting to bootloader...');
+                
+                // NOTA: Na v0.2.2, a classe chama-se ESPLoader diretamente no window
+                const transport = new Transport(port);
+                esploader = new ESPLoader(transport, 115200, null);
+
+                // Redirecionar logs internos para o nosso terminal
+                // (Truque para ver o que a lib está a fazer)
+                const originalLog = console.log;
+                console.log = function(msg) {
+                    term.writeln(`  [LOG] ${msg}`);
+                    originalLog(msg);
+                };
+
+                await esploader.main_fn();
+                term.writeln('\x1b[1;32m[INFO] Chip Detected & Connected!\x1b[0m');
+
+                // Passo D: Apagar Flash
+                term.writeln('\x1b[1;33m[WIPE] Erasing Flash (This takes time)...\x1b[0m');
+                document.getElementById('status-text').innerText = "ERASING...";
+                await esploader.erase_flash();
+                term.writeln('       Flash Erased Successfully.');
+
+                // Passo E: Escrever Ficheiros
+                const parts = manifest.builds[0].parts;
+                let totalFiles = parts.length;
+                let currentFile = 0;
+
+                for (let part of parts) {
+                    currentFile++;
+                    term.writeln(`\n\x1b[1;34m[DL]\x1b[0m Downloading ${part.path}...`);
+                    
+                    const binResp = await fetch(part.path);
+                    const bin = await binResp.arrayBuffer();
+                    const data = new Uint8Array(bin);
+
+                    term.writeln(`\x1b[1;34m[WRITE]\x1b[0m Writing ${bin.byteLength} bytes to 0x${part.offset.toString(16)}...`);
+                    
+                    await esploader.write_flash(
+                        [{ data: data, address: part.offset }],
+                        'keep',
+                        false,
+                        true,
+                        (fileIndex, written, total) => {
+                            const pct = Math.round((written / total) * 100);
+                            document.getElementById('status-text').innerText = `File ${currentFile}/${totalFiles}: ${pct}%`;
+                            document.getElementById('p-fill').style.width = `${pct}%`;
+                            // Barra de progresso textual
+                            if (pct % 5 === 0 && pct > 0) term.write('.');
+                        }
+                    );
+                    term.write(' DONE');
+                }
+
+                // Passo F: Reset
+                term.writeln('\n\n\x1b[1;32m[RESET] Hard Resetting Device...\x1b[0m');
+                await esploader.hard_reset();
+                await port.close();
+                
+                // Restaurar console.log
+                console.log = originalLog;
+
+                term.writeln('\n=======================================');
+                term.writeln('\x1b[1;32m   ✅ FLASH COMPLETED SUCCESSFULLY\x1b[0m');
+                term.writeln('=======================================');
+                document.getElementById('status-text').innerText = "SUCCESS - REBOOTING";
+                document.getElementById('p-fill').style.background = "#00ff00";
+
+            } catch (e) {
+                term.writeln(`\n\x1b[1;31m❌ ERROR: ${e.message}\x1b[0m`);
+                console.error(e);
+                document.getElementById('status-text').innerText = "FAILED";
+                document.getElementById('p-fill').style.background = "#ff0000";
+            } finally {
+                btns.forEach(b => b.disabled = false);
+            }
+        }
+    </script>
 </body>
 </html>
