@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <title>MARAUDER CONSOLE FLASHER</title>
     
-    <!-- 1. ESPLoader Bundle (Global) -->
-    <script src="https://unpkg.com/esptool-js@0.5.4/bundle.js"></script>
+    <!-- CDN ALTERNATIVO (JSDelivr) - Mais estável -->
+    <script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.js"></script>
     
-    <!-- 2. Xterm -->
+    <!-- Xterm -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
@@ -39,80 +39,88 @@
     <div id="terminal"></div>
 
     <script>
-        // 1. Configurar Terminal
-        const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14 });
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(document.getElementById('terminal'));
-        fitAddon.fit();
-        window.onresize = () => fitAddon.fit();
+        // Esperar o bundle carregar antes de permitir cliques
+        window.addEventListener('load', () => {
+            const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14 });
+            const fitAddon = new FitAddon.FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(document.getElementById('terminal'));
+            fitAddon.fit();
+            window.onresize = () => fitAddon.fit();
 
-        term.writeln('=== READY TO FLASH ===');
-
-        // 2. Função de Flash
-        async function startFlash(manifestUrl) {
-            try {
-                if (typeof esptooljs === 'undefined') return term.writeln('ERROR: Library not loaded!');
-
-                term.writeln(`\n> FETCHING ${manifestUrl}...`);
-                const resp = await fetch(manifestUrl);
-                const manifest = await resp.json();
-
-                term.writeln('> SELECT PORT...');
-                const port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-
-                term.writeln('> CONNECTING...');
-                
-                // INICIALIZA O LOADER
-                const transport = new esptooljs.Transport(port);
-                const loader = new esptooljs.ESPLoader(transport, 115200, null);
-
-                // *** O SEGREDO: REDIRECIONAR LOGS INTERNOS PARA O TERMINAL ***
-                loader.debug = (s) => term.writeln('[DEBUG] ' + s);
-                loader.info = (s) => term.writeln(s); // Isto mostra "Erasing", "Writing", etc.
-                
-                const chip = await loader.main_fn();
-                term.writeln(`> CHIP DETECTED: ${chip}`);
-
-                term.writeln('> ERASING FLASH...');
-                await loader.erase_flash();
-
-                // LOOP PELOS FICHEIROS (BOOTLOADER, PARTITIONS, APP)
-                const parts = manifest.builds[0].parts;
-                for (let part of parts) {
-                    term.writeln(`> DOWNLOADING ${part.path}...`);
-                    const bin = await fetch(part.path).then(r => r.arrayBuffer());
-                    
-                    term.writeln(`> WRITING ${bin.byteLength} BYTES AT ${part.offset}...`);
-                    
-                    await loader.write_flash({
-                        fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
-                        flash_size: 'keep',
-                        erase_all: false,
-                        compress: true,
-                        reportProgress: (fileIndex, written, total) => {
-                            const pct = Math.round((written / total) * 100);
-                            document.getElementById('status').innerText = `Flashing: ${pct}%`;
-                            // Opcional: Mostrar progresso no terminal
-                            if (pct % 10 === 0) term.write('.');
-                        }
-                    });
-                    term.writeln('\n> DONE.');
-                }
-
-                term.writeln('> RESETTING...');
-                await loader.hard_reset();
-                await port.close();
-                term.writeln('\n> FLASH COMPLETE! SUCCESS.');
-                document.getElementById('status').innerText = "Success";
-
-            } catch (e) {
-                term.writeln(`\n> ERROR: ${e.message}`);
-                console.error(e);
-                document.getElementById('status').innerText = "Error";
+            // Verificar se carregou
+            if (typeof esptooljs !== 'undefined') {
+                term.writeln('=== SYSTEM READY ===');
+                term.writeln('> ESPTool Loaded: OK');
+            } else {
+                term.writeln('ERROR: ESPTool failed to load.');
+                term.writeln('Try refreshing the page (Ctrl+Shift+R).');
+                return;
             }
-        }
+
+            // Função de Flash (Global para os botões)
+            window.startFlash = async function(manifestUrl) {
+                try {
+                    term.writeln(`\n> FETCHING ${manifestUrl}...`);
+                    const resp = await fetch(manifestUrl);
+                    const manifest = await resp.json();
+
+                    term.writeln('> SELECT PORT...');
+                    const port = await navigator.serial.requestPort();
+                    await port.open({ baudRate: 115200 });
+
+                    term.writeln('> CONNECTING TO BOOTLOADER...');
+                    
+                    const transport = new esptooljs.Transport(port);
+                    const loader = new esptooljs.ESPLoader(transport, 115200, null);
+
+                    // Redirecionar logs
+                    const origLog = console.log;
+                    console.log = (...args) => { term.writeln(args.join(' ')); origLog(...args); };
+                    
+                    const chip = await loader.main_fn();
+                    term.writeln(`> CHIP: ${chip}`);
+
+                    term.writeln('> ERASING FLASH (THIS MAY TAKE 1-2 MIN)...');
+                    await loader.erase_flash();
+
+                    const parts = manifest.builds[0].parts;
+                    for (let part of parts) {
+                        term.writeln(`> DOWNLOADING ${part.path}...`);
+                        const bin = await fetch(part.path).then(r => r.arrayBuffer());
+                        
+                        term.writeln(`> WRITING ${bin.byteLength} BYTES TO 0x${part.offset.toString(16).toUpperCase()}...`);
+                        
+                        await loader.write_flash({
+                            fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
+                            flash_size: 'keep',
+                            erase_all: false,
+                            compress: true,
+                            reportProgress: (fileIndex, written, total) => {
+                                const pct = Math.round((written / total) * 100);
+                                document.getElementById('status').innerText = `${pct}%`;
+                                if (pct % 5 === 0) term.write('█');
+                            }
+                        });
+                        term.writeln(' DONE');
+                    }
+
+                    term.writeln('> RESETTING DEVICE...');
+                    await loader.hard_reset();
+                    await port.close();
+                    
+                    console.log = origLog; // Restaurar console
+                    
+                    term.writeln('\n> ✅ FLASH COMPLETE!');
+                    document.getElementById('status').innerText = "Success ✅";
+
+                } catch (e) {
+                    term.writeln(`\n> ❌ ERROR: ${e.message}`);
+                    console.error(e);
+                    document.getElementById('status').innerText = "Failed ❌";
+                }
+            };
+        });
     </script>
 </body>
 </html>
