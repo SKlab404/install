@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V24 (FORCE CLOSE)</title>
+    <title>MARAUDER V25 (C5 READY)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
@@ -13,7 +13,7 @@
         #header { padding: 20px; background: #111; border-bottom: 1px solid #333; text-align: center; }
         button { padding: 15px 25px; margin: 0 10px; background: #003300; color: #fff; border: 1px solid #0f0; cursor: pointer; font-weight: bold; }
         button:hover { background: #005500; }
-        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; }
+        button:disabled { background: #222; color: #555; border-color: #444; }
         #term { flex: 1; padding: 10px; }
     </style>
 </head>
@@ -27,13 +27,14 @@
 
     <div id="term"></div>
 
+    <!-- USAR VERSÃO 0.5.6 (Suporte C5) -->
     <script type="module">
-        import * as esptool from 'https://esm.run/esptool-js@0.5.4';
+        import * as esptool from 'https://esm.run/esptool-js@0.5.6';
         window.ESPLoader = esptool.ESPLoader;
         window.Transport = esptool.Transport;
         window.libReady = true;
         if (window.term) {
-            window.term.writeln('\x1b[1;32m> PRONTO (V24)\x1b[0m');
+            window.term.writeln('\x1b[1;32m> PRONTO (Lib v0.5.6 - C5 Support)\x1b[0m');
             enableButtons();
         }
     </script>
@@ -46,10 +47,8 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V24 ===');
-        term.writeln('> DICA: Se der erro, desliga e liga o USB!');
-
-        let currentPort = null; // Variável para guardar a porta aberta
+        term.writeln('=== MARAUDER V25 (C5 SPECIAL) ===');
+        let currentPort = null;
 
         const check = setInterval(() => {
             if (window.libReady) { clearInterval(check); enableButtons(); }
@@ -65,12 +64,10 @@
 
         async function flash(manifestUrl) {
             const btns = document.querySelectorAll('button');
-            btns.forEach(b => b.disabled = true); // BLOQUEIA BOTÕES LOGO
+            btns.forEach(b => b.disabled = true);
 
             try {
-                // 1. LIMPEZA DE PORTA (FORCE CLOSE)
                 if (currentPort) {
-                    term.writeln('> [AUTO] A fechar conexão anterior...');
                     try { await currentPort.close(); } catch(e) {}
                     currentPort = null;
                 }
@@ -84,25 +81,15 @@
                 }
 
                 term.writeln('> [2] Porta Serial...');
-                
-                // Tenta abrir porta com gestão de erros agressiva
-                try {
-                    currentPort = await navigator.serial.requestPort();
-                    await currentPort.open({ baudRate: 115200 });
-                } catch (e) {
-                    if (e.message.includes("already open")) {
-                        term.writeln('\x1b[1;31m> ERRO: PORTA PRESA! DESLIGA O CABO USB E VOLTA A LIGAR.\x1b[0m');
-                        throw new Error("Porta bloqueada pelo sistema operativo.");
-                    } else {
-                        throw e;
-                    }
-                }
+                currentPort = await navigator.serial.requestPort();
+                await currentPort.open({ baudRate: 115200 });
 
-                term.writeln('> [3] Conectando...');
+                term.writeln('> [3] Conectando ao ESP32-C5...');
                 const transport = new window.Transport(currentPort);
                 const loader = new window.ESPLoader({
                     transport: transport,
                     baudrate: 115200,
+                    romBaudrate: 115200, // Força a velocidade ROM
                     terminal: {
                         clean: () => term.clear(),
                         writeLine: (d) => term.writeln(d),
@@ -110,8 +97,16 @@
                     }
                 });
 
-                const chip = await loader.main(); 
-                term.writeln(`> Chip: ${chip}`);
+                // Tenta conectar (main_fn na 0.5.6)
+                let chip;
+                try {
+                    chip = await loader.main_fn();
+                } catch (e) {
+                    // Fallback para main()
+                    chip = await loader.main();
+                }
+                
+                term.writeln(`> Chip ID: ${chip}`);
                 
                 term.writeln('> [4] A APAGAR FLASH...');
                 await loader.erase_flash();
@@ -137,8 +132,6 @@
 
                 term.writeln('\n> [SUCESSO] Reinicia o dispositivo!');
                 await loader.hard_reset();
-                
-                // FECHAR PORTA NO FINAL (IMPORTANTE)
                 await currentPort.close();
                 currentPort = null;
 
