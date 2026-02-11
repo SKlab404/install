@@ -2,9 +2,8 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V22 (A PROVA DE BALA)</title>
+    <title>MARAUDER V23 (A VITÓRIA)</title>
     
-    <!-- TERMINAL -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
@@ -28,17 +27,13 @@
 
     <div id="term"></div>
 
-    <!-- 1. O IMPORT QUE FUNCIONA (DA V16) -->
     <script type="module">
-        // Usamos o esm.run que já provou que funciona no teu browser
         import * as esptool from 'https://esm.run/esptool-js@0.5.4';
-        
         window.ESPLoader = esptool.ESPLoader;
         window.Transport = esptool.Transport;
         window.libReady = true;
-        
         if (window.term) {
-            window.term.writeln('\x1b[1;32m> MÓDULO CARREGADO! (JSDelivr)\x1b[0m');
+            window.term.writeln('\x1b[1;32m> PRONTO!\x1b[0m');
             enableButtons();
         }
     </script>
@@ -51,14 +46,10 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V22 (COMBINAÇÃO FINAL) ===');
-        term.writeln('> A importar bibliotecas...');
+        term.writeln('=== MARAUDER V23 ===');
 
         const check = setInterval(() => {
-            if (window.libReady) {
-                clearInterval(check);
-                enableButtons();
-            }
+            if (window.libReady) { clearInterval(check); enableButtons(); }
         }, 500);
 
         function enableButtons() {
@@ -70,14 +61,11 @@
         }
 
         async function flash(manifestUrl) {
-            if (!window.libReady) return alert("Erro: Biblioteca não carregou.");
-            
             const btns = document.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
 
             try {
-                term.writeln(`\n> [1] A ler manifesto: ${manifestUrl}...`);
-                // Tentativa dupla de leitura (Raiz ou Relativo)
+                term.writeln(`\n> [1] Manifesto: ${manifestUrl}...`);
                 let manifest;
                 try {
                     manifest = await fetch(manifestUrl).then(r => { if(!r.ok) throw new Error(); return r.json(); });
@@ -89,9 +77,7 @@
                 const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
-                term.writeln('> [3] A conectar...');
-                
-                // 2. A LÓGICA QUE CORRIGE O ERRO (DA V17)
+                term.writeln('> [3] Conectando...');
                 const transport = new window.Transport(port);
                 const loader = new window.ESPLoader({
                     transport: transport,
@@ -103,16 +89,16 @@
                     }
                 });
 
-                const chip = await loader.main_fn();
+                // *** A CORREÇÃO FINAL: main_fn() -> main() ***
+                const chip = await loader.main(); 
+                
                 term.writeln(`> Chip: ${chip}`);
-
-                term.writeln('> [4] A APAGAR FLASH (Pode demorar)...');
+                term.writeln('> [4] A APAGAR FLASH...');
                 await loader.erase_flash();
 
                 term.writeln('> [5] A ESCREVER...');
                 for (let part of manifest.builds[0].parts) {
                     term.writeln(`  -> ${part.path}...`);
-                    
                     let bin;
                     try {
                         bin = await fetch(part.path).then(r => { if(!r.ok) throw new Error(); return r.arrayBuffer(); });
@@ -129,7 +115,7 @@
                     });
                 }
 
-                term.writeln('\n> [SUCESSO] Reinicia o Marauder!');
+                term.writeln('\n> [SUCESSO] Reinicia o dispositivo!');
                 await loader.hard_reset();
                 await port.close();
 
