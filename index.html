@@ -2,9 +2,9 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V21 (HIBRIDO)</title>
+    <title>MARAUDER V22 (A PROVA DE BALA)</title>
     
-    <!-- TERMINAL VISUAL -->
+    <!-- TERMINAL -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
@@ -28,17 +28,17 @@
 
     <div id="term"></div>
 
-    <!-- O SEGREDO: Carregar como MÓDULO (Igual à V16 que funcionou) -->
+    <!-- 1. O IMPORT QUE FUNCIONA (DA V16) -->
     <script type="module">
-        import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js?module';
+        // Usamos o esm.run que já provou que funciona no teu browser
+        import * as esptool from 'https://esm.run/esptool-js@0.5.4';
         
-        // Guardar no window para o nosso script usar
-        window.ESPLoader = ESPLoader;
-        window.Transport = Transport;
+        window.ESPLoader = esptool.ESPLoader;
+        window.Transport = esptool.Transport;
         window.libReady = true;
         
         if (window.term) {
-            window.term.writeln('\x1b[1;32m> MÓDULO CARREGADO COM SUCESSO!\x1b[0m');
+            window.term.writeln('\x1b[1;32m> MÓDULO CARREGADO! (JSDelivr)\x1b[0m');
             enableButtons();
         }
     </script>
@@ -51,10 +51,9 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V21 (O HÍBRIDO) ===');
-        term.writeln('> A importar módulos...');
+        term.writeln('=== MARAUDER V22 (COMBINAÇÃO FINAL) ===');
+        term.writeln('> A importar bibliotecas...');
 
-        // Verificar se carregou
         const check = setInterval(() => {
             if (window.libReady) {
                 clearInterval(check);
@@ -71,19 +70,18 @@
         }
 
         async function flash(manifestUrl) {
-            if (!window.libReady) return alert("Erro: Módulo não carregou.");
+            if (!window.libReady) return alert("Erro: Biblioteca não carregou.");
             
             const btns = document.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
 
             try {
                 term.writeln(`\n> [1] A ler manifesto: ${manifestUrl}...`);
-                // Correção para o 404: Tenta ler da raiz se falhar
+                // Tentativa dupla de leitura (Raiz ou Relativo)
                 let manifest;
                 try {
-                    manifest = await fetch(manifestUrl).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+                    manifest = await fetch(manifestUrl).then(r => { if(!r.ok) throw new Error(); return r.json(); });
                 } catch (e) {
-                    term.writeln('> Aviso: Ficheiro não encontrado. A tentar caminho absoluto...');
                     manifest = await fetch('/install/' + manifestUrl).then(r => r.json());
                 }
 
@@ -91,9 +89,9 @@
                 const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
-                term.writeln('> [3] A conectar (Modo Seguro)...');
+                term.writeln('> [3] A conectar...');
                 
-                // --- A CORREÇÃO DA V17 (Para não dar erro getInfo) ---
+                // 2. A LÓGICA QUE CORRIGE O ERRO (DA V17)
                 const transport = new window.Transport(port);
                 const loader = new window.ESPLoader({
                     transport: transport,
@@ -104,25 +102,22 @@
                         write: (d) => term.write(d)
                     }
                 });
-                // -----------------------------------------------------
 
                 const chip = await loader.main_fn();
                 term.writeln(`> Chip: ${chip}`);
 
-                term.writeln('> [4] A APAGAR FLASH...');
+                term.writeln('> [4] A APAGAR FLASH (Pode demorar)...');
                 await loader.erase_flash();
 
                 term.writeln('> [5] A ESCREVER...');
                 for (let part of manifest.builds[0].parts) {
                     term.writeln(`  -> ${part.path}...`);
-                    // Correção de caminho para os ficheiros .bin
-                    let binUrl = part.path;
+                    
                     let bin;
                     try {
-                        bin = await fetch(binUrl).then(r => { if(!r.ok) throw new Error(); return r.arrayBuffer(); });
+                        bin = await fetch(part.path).then(r => { if(!r.ok) throw new Error(); return r.arrayBuffer(); });
                     } catch(e) {
-                        binUrl = '/install/' + part.path; // Tenta com prefixo
-                        bin = await fetch(binUrl).then(r => r.arrayBuffer());
+                        bin = await fetch('/install/' + part.path).then(r => r.arrayBuffer());
                     }
 
                     await loader.write_flash({
