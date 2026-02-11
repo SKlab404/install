@@ -1,11 +1,13 @@
 {
-  "name": "Marauder C5",
+  "name": "Marauder C5 Beta",
   "version": "v1.8.5",
   "new_install_prompt_erase": true,
   "builds": [
     {
-      "chipFamily": "ESP32",
+      "chipFamily": "ESP32-C5",
       "parts": [
+        { "path": "firmware/bootloader.bin", "offset": 8192 },
+        { "path": "firmware/partitions.bin", "offset": 32768 },
         { "path": "firmware/marauder_c5.bin", "offset": 65536 }
       ]
     }
