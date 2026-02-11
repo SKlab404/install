@@ -2,72 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER TERMINAL V13</title>
+    <title>MARAUDER FLASHER V14</title>
     
-    <!-- XTERM (Terminal Visual) -->
+    <!-- XTERM (Visual) -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
-    <!-- ESPTOOL (Bundle Global Correto) -->
-    <script src="https://unpkg.com/esptool-js/bundle.js"></script>
-
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; }
+        body { background: #000; color: #0f0; font-family: monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
         
-        #header { padding: 10px; background: #111; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; justify-content: center; }
+        #header { padding: 15px; background: #111; border-bottom: 1px solid #333; display: flex; gap: 15px; align-items: center; justify-content: center; }
         
         button { 
-            padding: 10px 20px; background: #003300; color: #0f0; border: 1px solid #0f0; 
-            font-family: monospace; font-weight: bold; cursor: pointer; text-transform: uppercase;
+            padding: 12px 24px; background: #003300; color: #0f0; border: 1px solid #0f0; 
+            font-family: monospace; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px;
         }
-        button:hover { background: #005500; }
-        button:disabled { background: #222; color: #555; border-color: #444; }
+        button:hover { background: #005500; box-shadow: 0 0 10px #0f0; }
+        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; box-shadow: none; }
 
-        #terminal { flex: 1; padding: 10px; }
-        
-        #status-bar { padding: 5px; background: #222; text-align: center; color: #aaa; font-size: 0.8em; }
+        #terminal { flex: 1; padding: 10px; background: #000; }
+        #status-bar { padding: 8px; background: #222; text-align: center; color: #aaa; font-size: 0.9em; border-top: 1px solid #333; }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <strong>MARAUDER V13</strong>
-        <button onclick="flash('manifest_c5.json')">FLASH C5</button>
-        <button onclick="flash('manifest_std.json')">FLASH STD</button>
-        <button onclick="flash('manifest_bruce.json')" style="color:#ff5555; border-color:#ff5555">FLASH BRUCE</button>
-        <button onclick="location.reload()" style="margin-left:auto; background:#333; border-color:#666;">RESET PAGE</button>
+        <strong>V14</strong>
+        <button id="btn-c5" onclick="flash('manifest_c5.json')">FLASH C5</button>
+        <button id="btn-std" onclick="flash('manifest_std.json')">FLASH STD</button>
+        <button id="btn-bruce" onclick="flash('manifest_bruce.json')" style="color:#ff5555; border-color:#ff5555">FLASH BRUCE</button>
     </div>
 
     <div id="terminal"></div>
-    <div id="status-bar">Waiting for user input...</div>
+    <div id="status-bar">Initializing...</div>
 
+    <!-- SCRIPT DE IMPORTAÇÃO (A MÁGICA ACONTECE AQUI) -->
+    <script type="module">
+        import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js?module';
+
+        // Disponibilizar globalmente para o resto do código
+        window.ESPLoader = ESPLoader;
+        window.Transport = Transport;
+        window.libLoaded = true;
+
+        // Avisar o terminal que estamos prontos
+        if (window.term) {
+            window.term.writeln('\x1b[1;32m> CORE LIBRARIES IMPORTED SUCCESSFULLY.\x1b[0m');
+            window.term.writeln('> READY TO CONNECT.');
+            document.getElementById('status-bar').innerText = "System Ready";
+        }
+    </script>
+
+    <!-- LÓGICA DO FLASHER -->
     <script>
-        // 1. Setup Terminal
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
+        // 1. Iniciar Terminal
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true, fontSize: 14 });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
         term.open(document.getElementById('terminal'));
         fitAddon.fit();
         window.onresize = () => fitAddon.fit();
+        window.term = term; // Guardar referência global
 
-        term.writeln('=== MARAUDER FLASHER V13 ===');
-        term.writeln('> Checking libraries...');
+        term.writeln('=== MARAUDER TERMINAL V14 ===');
+        term.writeln('> Loading esptool-js module...');
 
-        // 2. Verificar biblioteca
-        if (typeof esptooljs === 'undefined') {
-            term.writeln('\x1b[1;31m> ERROR: esptool-js library not loaded!\x1b[0m');
-            term.writeln('> Try disabling AdBlock or checking internet connection.');
-        } else {
-            term.writeln('\x1b[1;32m> LIBRARY OK. READY TO FLASH.\x1b[0m');
-        }
-
+        // 2. Função Flash
         async function flash(manifestUrl) {
-            try {
-                if (typeof esptooljs === 'undefined') return alert("Library missing!");
+            if (!window.libLoaded) {
+                term.writeln('\x1b[1;31m> ERROR: Libraries still loading or failed!\x1b[0m');
+                return alert("Libraries not ready yet. Check internet connection.");
+            }
 
-                term.writeln(`\n> [INIT] Fetching ${manifestUrl}...`);
+            const btns = document.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true);
+
+            try {
+                term.writeln(`\n> [INIT] Loading Manifest: ${manifestUrl}...`);
                 const resp = await fetch(manifestUrl);
+                if (!resp.ok) throw new Error(`Manifest not found (${resp.status})`);
                 const manifest = await resp.json();
 
                 term.writeln('> [USER] Select Serial Port...');
@@ -78,36 +92,34 @@
                     await port.open({ baudRate: 115200 });
                 } catch (err) {
                     if (err.message.includes("already open")) {
-                        term.writeln('\x1b[1;31m> ERROR: PORT LOCKED! PLEASE RELOAD PAGE (F5) OR UNPLUG USB.\x1b[0m');
-                        alert("PORTA BLOQUEADA! Faz refresh à página (F5) e tenta de novo.");
+                        term.writeln('\x1b[1;31m> ERROR: PORT BUSY! REFRESH PAGE (F5) AND UNPLUG USB.\x1b[0m');
                     } else {
                         term.writeln(`> ERROR: ${err.message}`);
                     }
-                    return;
+                    throw err; // Parar execução
                 }
 
-                term.writeln('> [CONN] Connecting to ESP32...');
-                
-                // CORREÇÃO: Usar 'esptooljs.Transport' em vez de apenas 'Transport'
-                const transport = new esptooljs.Transport(port);
-                const loader = new esptooljs.ESPLoader(transport, 115200, null);
+                term.writeln('> [CONN] Connecting...');
+                const transport = new window.Transport(port);
+                const loader = new window.ESPLoader(transport, 115200, null);
 
-                // Logs visíveis
+                // Logs
                 loader.debug = (s) => term.writeln(`  [DBG] ${s}`);
                 loader.info = (s) => term.writeln(`  [INF] ${s}`);
 
                 const chip = await loader.main_fn();
-                term.writeln(`> [INFO] Connected to ${chip}`);
+                term.writeln(`> [INFO] Chip: ${chip}`);
 
-                term.writeln('> [WIPE] Erasing Flash...');
+                term.writeln('> [WIPE] Erasing Flash (Wait ~30s)...');
+                document.getElementById('status-bar').innerText = "Erasing Flash...";
                 await loader.erase_flash();
 
                 const parts = manifest.builds[0].parts;
                 for (let part of parts) {
-                    term.writeln(`> [DL] Downloading ${part.path}...`);
+                    term.writeln(`> [DL] Fetching ${part.path}...`);
                     const bin = await fetch(part.path).then(r => r.arrayBuffer());
                     
-                    term.writeln(`> [WRITE] Writing to 0x${part.offset.toString(16)}...`);
+                    term.writeln(`> [BURN] Writing to 0x${part.offset.toString(16)}...`);
                     
                     await loader.write_flash({
                         fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
@@ -116,8 +128,8 @@
                         compress: true,
                         reportProgress: (fileIndex, written, total) => {
                             const pct = Math.round((written / total) * 100);
-                            document.getElementById('status-bar').innerText = `Flashing: ${pct}%`;
-                            if (pct % 5 === 0) term.write('.');
+                            document.getElementById('status-bar').innerText = `Writing: ${pct}%`;
+                            if (pct % 5 === 0) term.write('▓');
                         }
                     });
                     term.write(' OK');
@@ -127,12 +139,15 @@
                 await loader.hard_reset();
                 await port.close();
 
-                term.writeln('\n\x1b[1;32m> ✅ SUCCESS! ENJOY YOUR MARAUDER.\x1b[0m');
-                document.getElementById('status-bar').innerText = "DONE";
+                term.writeln('\n\x1b[1;32m> ✅ FLASH COMPLETE! REBOOTING DEVICE.\x1b[0m');
+                document.getElementById('status-bar').innerText = "SUCCESS";
 
             } catch (e) {
-                term.writeln(`\n\x1b[1;31m> CRITICAL ERROR: ${e.message}\x1b[0m`);
+                term.writeln(`\n\x1b[1;31m> FAILURE: ${e.message}\x1b[0m`);
                 console.error(e);
+                document.getElementById('status-bar').innerText = "ERROR";
+            } finally {
+                btns.forEach(b => b.disabled = false);
             }
         }
     </script>
