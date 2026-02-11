@@ -2,125 +2,152 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER CONSOLE FLASHER</title>
+    <title>MARAUDER FLASHER FINAL</title>
     
-    <!-- CDN ALTERNATIVO (JSDelivr) - Mais estável -->
-    <script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.js"></script>
-    
-    <!-- Xterm -->
+    <!-- Xterm (Terminal Visual) -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; height: 100vh; margin: 0; }
-        #controls { width: 250px; background: #111; padding: 20px; border-right: 1px solid #333; }
+        body { background: #050505; color: #0f0; font-family: monospace; display: flex; height: 100vh; margin: 0; overflow: hidden; }
+        #controls { width: 260px; background: #111; padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 10px; }
         #terminal { flex: 1; background: #000; padding: 10px; }
         
+        h2 { color: #fff; text-align: center; margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
         button {
-            width: 100%; padding: 15px; margin-bottom: 10px;
-            background: #004400; color: #fff; border: 1px solid #0f0;
-            cursor: pointer; font-family: monospace; font-weight: bold;
+            width: 100%; padding: 15px; 
+            background: #003300; color: #0f0; border: 1px solid #0f0;
+            cursor: pointer; font-family: monospace; font-weight: bold; text-transform: uppercase;
+            transition: all 0.2s;
         }
-        button:hover { background: #006600; }
-        h2 { color: #fff; text-align: center; }
+        button:hover { background: #005500; box-shadow: 0 0 10px #0f0; }
+        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; box-shadow: none; }
+        
+        #status { text-align: center; margin-top: 20px; color: #888; font-size: 0.9em; }
+        
+        /* Barra de progresso visual */
+        .progress-bar { width: 100%; height: 5px; background: #333; margin-top: 5px; }
+        .progress-fill { width: 0%; height: 100%; background: #0f0; transition: width 0.2s; }
     </style>
 </head>
 <body>
 
     <div id="controls">
-        <h2>FLASHER</h2>
-        <button onclick="startFlash('manifest_c5.json')">FLASH C5 (BETA)</button>
-        <button onclick="startFlash('manifest_std.json')">FLASH STD</button>
-        <button onclick="startFlash('manifest_bruce.json')" style="border-color:red;">FLASH BRUCE</button>
-        <div id="status" style="color:#aaa; margin-top:20px; text-align:center;">Idle</div>
+        <h2>FLASHER V9</h2>
+        <button id="btn-c5" onclick="flash('manifest_c5.json')">FLASH C5 (BETA)</button>
+        <button id="btn-std" onclick="flash('manifest_std.json')">FLASH STD</button>
+        <button id="btn-bruce" onclick="flash('manifest_bruce.json')" style="border-color:#f00; color:#f00;">FLASH BRUCE</button>
+        
+        <div id="status">System Ready</div>
+        <div class="progress-bar"><div id="pfill" class="progress-fill"></div></div>
     </div>
 
     <div id="terminal"></div>
 
-    <script>
-        // Esperar o bundle carregar antes de permitir cliques
-        window.addEventListener('load', () => {
-            const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14 });
-            const fitAddon = new FitAddon.FitAddon();
-            term.loadAddon(fitAddon);
-            term.open(document.getElementById('terminal'));
-            fitAddon.fit();
-            window.onresize = () => fitAddon.fit();
+    <!-- SCRIPT TIPO MÓDULO - ESTE É O TRUQUE -->
+    <script type="module">
+        // 1. Importar DIRETAMENTE do unpkg (versão módulo)
+        import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js?module';
 
-            // Verificar se carregou
-            if (typeof esptooljs !== 'undefined') {
-                term.writeln('=== SYSTEM READY ===');
-                term.writeln('> ESPTool Loaded: OK');
-            } else {
-                term.writeln('ERROR: ESPTool failed to load.');
-                term.writeln('Try refreshing the page (Ctrl+Shift+R).');
-                return;
-            }
-
-            // Função de Flash (Global para os botões)
-            window.startFlash = async function(manifestUrl) {
-                try {
-                    term.writeln(`\n> FETCHING ${manifestUrl}...`);
-                    const resp = await fetch(manifestUrl);
-                    const manifest = await resp.json();
-
-                    term.writeln('> SELECT PORT...');
-                    const port = await navigator.serial.requestPort();
-                    await port.open({ baudRate: 115200 });
-
-                    term.writeln('> CONNECTING TO BOOTLOADER...');
-                    
-                    const transport = new esptooljs.Transport(port);
-                    const loader = new esptooljs.ESPLoader(transport, 115200, null);
-
-                    // Redirecionar logs
-                    const origLog = console.log;
-                    console.log = (...args) => { term.writeln(args.join(' ')); origLog(...args); };
-                    
-                    const chip = await loader.main_fn();
-                    term.writeln(`> CHIP: ${chip}`);
-
-                    term.writeln('> ERASING FLASH (THIS MAY TAKE 1-2 MIN)...');
-                    await loader.erase_flash();
-
-                    const parts = manifest.builds[0].parts;
-                    for (let part of parts) {
-                        term.writeln(`> DOWNLOADING ${part.path}...`);
-                        const bin = await fetch(part.path).then(r => r.arrayBuffer());
-                        
-                        term.writeln(`> WRITING ${bin.byteLength} BYTES TO 0x${part.offset.toString(16).toUpperCase()}...`);
-                        
-                        await loader.write_flash({
-                            fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
-                            flash_size: 'keep',
-                            erase_all: false,
-                            compress: true,
-                            reportProgress: (fileIndex, written, total) => {
-                                const pct = Math.round((written / total) * 100);
-                                document.getElementById('status').innerText = `${pct}%`;
-                                if (pct % 5 === 0) term.write('█');
-                            }
-                        });
-                        term.writeln(' DONE');
-                    }
-
-                    term.writeln('> RESETTING DEVICE...');
-                    await loader.hard_reset();
-                    await port.close();
-                    
-                    console.log = origLog; // Restaurar console
-                    
-                    term.writeln('\n> ✅ FLASH COMPLETE!');
-                    document.getElementById('status').innerText = "Success ✅";
-
-                } catch (e) {
-                    term.writeln(`\n> ❌ ERROR: ${e.message}`);
-                    console.error(e);
-                    document.getElementById('status').innerText = "Failed ❌";
-                }
-            };
+        // 2. Configurar Xterm
+        const term = new Terminal({ 
+            theme: { background: '#000', foreground: '#00ff41', cursor: '#0f0' }, 
+            fontFamily: 'Courier New, monospace', 
+            fontSize: 14,
+            cursorBlink: true
         });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+        window.addEventListener('resize', () => fitAddon.fit());
+
+        term.writeln('=== MARAUDER FLASHER V9 (MODULE LOADED) ===');
+        term.writeln('> Core libraries loaded directly via ESM.');
+        term.writeln('> Ready to burn silicon.\n');
+
+        // 3. Tornar a função acessível globalmente (porque o HTML onclick precisa)
+        window.flash = async function(manifestUrl) {
+            if (!navigator.serial) return alert("Web Serial not supported in this browser (Use Chrome/Edge).");
+
+            const btns = document.querySelectorAll('button');
+            btns.forEach(b => b.disabled = true); // Bloquear botões
+
+            try {
+                term.writeln(`\n> [INIT] Fetching manifest: ${manifestUrl}...`);
+                const resp = await fetch(manifestUrl);
+                if (!resp.ok) throw new Error(`Manifest not found: ${resp.status}`);
+                const manifest = await resp.json();
+
+                term.writeln('> [USER] Select Serial Port...');
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+
+                term.writeln('> [CONN] Connecting to ESP32...');
+                const transport = new Transport(port);
+                const loader = new ESPLoader(transport, 115200, null);
+
+                // Redirecionar logs internos
+                loader.debug = (s) => term.writeln(`  [DBG] ${s}`);
+                loader.info = (s) => term.writeln(`  [INF] ${s}`);
+
+                const chip = await loader.main_fn();
+                term.writeln(`> [INFO] Chip Detected: ${chip}`);
+
+                term.writeln('> [WIPE] Erasing Flash (Wait 1-2 mins)...');
+                await loader.erase_flash();
+
+                // Loop pelos ficheiros
+                const parts = manifest.builds[0].parts;
+                let totalFiles = parts.length;
+                let currentFile = 0;
+
+                for (let part of parts) {
+                    currentFile++;
+                    term.writeln(`\n> [DL] Downloading ${part.path}...`);
+                    const binResp = await fetch(part.path);
+                    if (!binResp.ok) throw new Error(`Failed to download ${part.path}`);
+                    const bin = await binResp.arrayBuffer();
+
+                    term.writeln(`> [WRITE] Writing ${bin.byteLength} bytes to 0x${part.offset.toString(16).toUpperCase()}...`);
+                    
+                    await loader.write_flash({
+                        fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
+                        flash_size: 'keep',
+                        erase_all: false,
+                        compress: true,
+                        reportProgress: (fileIndex, written, total) => {
+                            const pct = Math.round((written / total) * 100);
+                            document.getElementById('status').innerText = `File ${currentFile}/${totalFiles}: ${pct}%`;
+                            document.getElementById('pfill').style.width = `${pct}%`;
+                            // Barra de progresso em texto no terminal para não spammar linhas
+                            if (pct % 10 === 0 && pct > 0) term.write('.'); 
+                        }
+                    });
+                    term.write(' DONE');
+                }
+
+                term.writeln('\n\n> [RESET] Hard Resetting...');
+                await loader.hard_reset();
+                await port.close();
+
+                term.writeln('\n=======================================');
+                term.writeln('   ✅ FLASH COMPLETED SUCCESSFULLY');
+                term.writeln('=======================================');
+                document.getElementById('status').innerText = "SUCCESS - PLEASE REBOOT DEVICE";
+                document.getElementById('pfill').style.background = "#00ff00";
+
+            } catch (e) {
+                term.writeln(`\n> ❌ ERROR: ${e.message}`);
+                console.error(e);
+                document.getElementById('status').innerText = "ERROR - CHECK TERMINAL";
+                document.getElementById('pfill').style.background = "#ff0000";
+            } finally {
+                btns.forEach(b => b.disabled = false); // Desbloquear botões
+            }
+        };
     </script>
 </body>
 </html>
