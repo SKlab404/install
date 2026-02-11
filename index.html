@@ -2,29 +2,20 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V20 (FINAL)</title>
+    <title>MARAUDER V21 (HIBRIDO)</title>
     
-    <!-- 1. XTERM (Terminal) -->
+    <!-- TERMINAL VISUAL -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
-    <!-- 2. ESPTOOL VIA CDN (O segredo para não falhar) -->
-    <script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.min.js"></script>
-
     <style>
-        body { background: #050505; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
         #header { padding: 20px; background: #111; border-bottom: 1px solid #333; text-align: center; }
-        
-        button { 
-            padding: 15px 25px; margin: 0 10px; background: #003300; color: #fff; 
-            border: 1px solid #0f0; cursor: pointer; font-weight: bold; text-transform: uppercase;
-        }
+        button { padding: 15px 25px; margin: 0 10px; background: #003300; color: #fff; border: 1px solid #0f0; cursor: pointer; font-weight: bold; }
         button:hover { background: #005500; }
-        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; }
-        
+        button:disabled { background: #222; color: #555; border-color: #444; }
         #term { flex: 1; padding: 10px; }
-        #status { color: #888; font-size: 0.9em; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -33,13 +24,26 @@
         <button id="btn-c5" onclick="flash('manifest_c5.json')" disabled>A CARREGAR...</button>
         <button id="btn-std" onclick="flash('manifest_std.json')" disabled>A CARREGAR...</button>
         <button id="btn-bruce" onclick="flash('manifest_bruce.json')" disabled style="color:#f55; border-color:#f55">BRUCE</button>
-        <div id="status">A ligar aos servidores...</div>
     </div>
 
     <div id="term"></div>
 
+    <!-- O SEGREDO: Carregar como MÓDULO (Igual à V16 que funcionou) -->
+    <script type="module">
+        import { ESPLoader, Transport } from 'https://unpkg.com/esptool-js@0.5.4/lib/index.js?module';
+        
+        // Guardar no window para o nosso script usar
+        window.ESPLoader = ESPLoader;
+        window.Transport = Transport;
+        window.libReady = true;
+        
+        if (window.term) {
+            window.term.writeln('\x1b[1;32m> MÓDULO CARREGADO COM SUCESSO!\x1b[0m');
+            enableButtons();
+        }
+    </script>
+
     <script>
-        // Configuração do Terminal
         const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true, fontSize: 14 });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
@@ -47,25 +51,19 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V20 (DIAGNÓSTICO) ===');
+        term.writeln('=== MARAUDER V21 (O HÍBRIDO) ===');
+        term.writeln('> A importar módulos...');
 
-        // Verificar biblioteca com tentativas
-        let attempts = 0;
-        const checkLib = setInterval(() => {
-            attempts++;
-            if (typeof esptooljs !== 'undefined') {
-                clearInterval(checkLib);
-                term.writeln('\x1b[1;32m> SUCESSO: Biblioteca carregada via CDN!\x1b[0m');
-                document.getElementById('status').innerText = "SISTEMA PRONTO";
+        // Verificar se carregou
+        const check = setInterval(() => {
+            if (window.libReady) {
+                clearInterval(check);
                 enableButtons();
-            } else if (attempts > 10) {
-                clearInterval(checkLib);
-                term.writeln('\x1b[1;31m> ERRO CRÍTICO: O CDN não respondeu.\x1b[0m');
-                term.writeln('> Verifica a tua ligação à internet ou firewall.');
             }
         }, 500);
 
         function enableButtons() {
+            if(document.getElementById('btn-c5').innerText !== "A CARREGAR...") return;
             document.querySelectorAll('button').forEach(b => {
                 b.disabled = false;
                 b.innerText = b.innerText.replace("A CARREGAR...", "FLASH");
@@ -73,25 +71,31 @@
         }
 
         async function flash(manifestUrl) {
-            if (typeof esptooljs === 'undefined') return alert("Erro: Biblioteca em falta.");
+            if (!window.libReady) return alert("Erro: Módulo não carregou.");
             
             const btns = document.querySelectorAll('button');
             btns.forEach(b => b.disabled = true);
 
             try {
-                term.writeln(`\n> [1/4] A ler ficheiro: ${manifestUrl}...`);
-                const manifest = await fetch(manifestUrl).then(r => {
-                    if (!r.ok) throw new Error(`Ficheiro não encontrado: ${manifestUrl} (Erro 404)`);
-                    return r.json();
-                });
+                term.writeln(`\n> [1] A ler manifesto: ${manifestUrl}...`);
+                // Correção para o 404: Tenta ler da raiz se falhar
+                let manifest;
+                try {
+                    manifest = await fetch(manifestUrl).then(r => { if(!r.ok) throw new Error(r.status); return r.json(); });
+                } catch (e) {
+                    term.writeln('> Aviso: Ficheiro não encontrado. A tentar caminho absoluto...');
+                    manifest = await fetch('/install/' + manifestUrl).then(r => r.json());
+                }
 
-                term.writeln('> [2/4] Escolhe a porta USB...');
+                term.writeln('> [2] Porta Serial...');
                 const port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
-                term.writeln('> [3/4] A conectar...');
-                const transport = new esptooljs.Transport(port);
-                const loader = new esptooljs.ESPLoader({
+                term.writeln('> [3] A conectar (Modo Seguro)...');
+                
+                // --- A CORREÇÃO DA V17 (Para não dar erro getInfo) ---
+                const transport = new window.Transport(port);
+                const loader = new window.ESPLoader({
                     transport: transport,
                     baudrate: 115200,
                     terminal: {
@@ -100,16 +104,27 @@
                         write: (d) => term.write(d)
                     }
                 });
+                // -----------------------------------------------------
 
                 const chip = await loader.main_fn();
-                term.writeln(`> Chip Detetado: ${chip}`);
+                term.writeln(`> Chip: ${chip}`);
 
-                term.writeln('> [4/4] A Flashear (Isto apaga tudo!)...');
+                term.writeln('> [4] A APAGAR FLASH...');
                 await loader.erase_flash();
 
+                term.writeln('> [5] A ESCREVER...');
                 for (let part of manifest.builds[0].parts) {
-                    term.writeln(`  -> A gravar ${part.path}...`);
-                    const bin = await fetch(part.path).then(r => r.arrayBuffer());
+                    term.writeln(`  -> ${part.path}...`);
+                    // Correção de caminho para os ficheiros .bin
+                    let binUrl = part.path;
+                    let bin;
+                    try {
+                        bin = await fetch(binUrl).then(r => { if(!r.ok) throw new Error(); return r.arrayBuffer(); });
+                    } catch(e) {
+                        binUrl = '/install/' + part.path; // Tenta com prefixo
+                        bin = await fetch(binUrl).then(r => r.arrayBuffer());
+                    }
+
                     await loader.write_flash({
                         fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
                         flash_size: 'keep',
@@ -119,15 +134,12 @@
                     });
                 }
 
-                term.writeln('\n> [FIM] SUCESSO! Reinicia o Marauder.');
+                term.writeln('\n> [SUCESSO] Reinicia o Marauder!');
                 await loader.hard_reset();
                 await port.close();
 
             } catch (e) {
                 term.writeln(`\n\x1b[1;31m> ERRO: ${e.message}\x1b[0m`);
-                if (e.message.includes("404")) {
-                    term.writeln('> DICA: O ficheiro .json não está na mesma pasta que o index.html!');
-                }
             } finally {
                 btns.forEach(b => b.disabled = false);
             }
