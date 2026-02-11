@@ -2,177 +2,137 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER TERMINAL FLASHER</title>
+    <title>MARAUDER TERMINAL V13</title>
     
-    <!-- 1. Xterm (Visual do Terminal) -->
+    <!-- XTERM (Terminal Visual) -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
-    <!-- 2. ESPTool-JS (Versão Clássica v0.2.2 - Mais estável para globals) -->
-    <script src="https://unpkg.com/esptool-js@0.2.2/lib/index.js"></script>
+    <!-- ESPTOOL (Bundle Global Correto) -->
+    <script src="https://unpkg.com/esptool-js/bundle.js"></script>
 
     <style>
-        body { background: #050505; color: #0f0; font-family: 'Courier New', monospace; display: flex; height: 100vh; margin: 0; overflow: hidden; }
+        body { background: #000; color: #0f0; font-family: monospace; height: 100vh; margin: 0; display: flex; flex-direction: column; }
         
-        #sidebar { width: 280px; background: #111; padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; }
-        #terminal-container { flex: 1; background: #000; padding: 15px; box-sizing: border-box; }
+        #header { padding: 10px; background: #111; border-bottom: 1px solid #333; display: flex; gap: 10px; align-items: center; justify-content: center; }
         
-        h2 { margin: 0 0 15px 0; color: #fff; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; font-size: 1.2rem; }
-        
-        button {
-            width: 100%; padding: 15px; 
-            background: #002200; color: #0f0; border: 1px solid #0f0;
-            cursor: pointer; font-family: inherit; font-weight: bold; text-transform: uppercase;
-            transition: all 0.2s;
+        button { 
+            padding: 10px 20px; background: #003300; color: #0f0; border: 1px solid #0f0; 
+            font-family: monospace; font-weight: bold; cursor: pointer; text-transform: uppercase;
         }
-        button:hover { background: #004400; box-shadow: 0 0 8px #0f0; }
-        button:disabled { background: #222; color: #555; border-color: #444; cursor: not-allowed; box-shadow: none; }
+        button:hover { background: #005500; }
+        button:disabled { background: #222; color: #555; border-color: #444; }
+
+        #terminal { flex: 1; padding: 10px; }
         
-        #status-area { margin-top: auto; text-align: center; font-size: 0.9em; color: #888; }
-        .progress-bar { width: 100%; height: 4px; background: #333; margin-top: 10px; }
-        .progress-fill { width: 0%; height: 100%; background: #0f0; transition: width 0.2s; }
+        #status-bar { padding: 5px; background: #222; text-align: center; color: #aaa; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h2>FLASHER V12</h2>
-        
-        <button id="btn-c5" onclick="startFlash('manifest_c5.json')">FLASH C5 (BETA)</button>
-        <button id="btn-std" onclick="startFlash('manifest_std.json')">FLASH STD</button>
-        <button id="btn-bruce" onclick="startFlash('manifest_bruce.json')" style="border-color:#f00; color:#f00;">FLASH BRUCE</button>
-        
-        <div id="status-area">
-            <div id="status-text">SYSTEM READY</div>
-            <div class="progress-bar"><div id="p-fill" class="progress-fill"></div></div>
-        </div>
+    <div id="header">
+        <strong>MARAUDER V13</strong>
+        <button onclick="flash('manifest_c5.json')">FLASH C5</button>
+        <button onclick="flash('manifest_std.json')">FLASH STD</button>
+        <button onclick="flash('manifest_bruce.json')" style="color:#ff5555; border-color:#ff5555">FLASH BRUCE</button>
+        <button onclick="location.reload()" style="margin-left:auto; background:#333; border-color:#666;">RESET PAGE</button>
     </div>
 
-    <div id="terminal-container"></div>
+    <div id="terminal"></div>
+    <div id="status-bar">Waiting for user input...</div>
 
     <script>
-        // 1. Configurar Terminal
-        const term = new Terminal({ 
-            theme: { background: '#000', foreground: '#00ff41', cursor: '#0f0' }, 
-            fontFamily: 'Courier New, monospace', 
-            fontSize: 14,
-            cursorBlink: true,
-            convertEol: true 
-        });
+        // 1. Setup Terminal
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
-        term.open(document.getElementById('terminal-container'));
+        term.open(document.getElementById('terminal'));
         fitAddon.fit();
-        window.addEventListener('resize', () => fitAddon.fit());
+        window.onresize = () => fitAddon.fit();
 
-        term.writeln('\x1b[1;32m=== MARAUDER TERMINAL FLASHER (V12) ===\x1b[0m');
-        term.writeln('Initializing ESPTool Environment...');
+        term.writeln('=== MARAUDER FLASHER V13 ===');
+        term.writeln('> Checking libraries...');
 
-        // 2. Verificar se a lib carregou
-        let esploader;
-        window.onload = function() {
-            if (typeof ESPLoader !== 'undefined') {
-                term.writeln('ESPTool Library Loaded: \x1b[1;32mOK\x1b[0m');
-            } else {
-                term.writeln('ESPTool Library Loaded: \x1b[1;31mFAILED\x1b[0m');
-                term.writeln('Check internet connection or refresh page.');
-            }
-        };
+        // 2. Verificar biblioteca
+        if (typeof esptooljs === 'undefined') {
+            term.writeln('\x1b[1;31m> ERROR: esptool-js library not loaded!\x1b[0m');
+            term.writeln('> Try disabling AdBlock or checking internet connection.');
+        } else {
+            term.writeln('\x1b[1;32m> LIBRARY OK. READY TO FLASH.\x1b[0m');
+        }
 
-        // 3. Função Principal de Flash
-        async function startFlash(manifestUrl) {
-            const btns = document.querySelectorAll('button');
-            btns.forEach(b => b.disabled = true);
-
+        async function flash(manifestUrl) {
             try {
-                // Passo A: Ler Manifesto
-                term.writeln(`\n\x1b[1;34m[INIT]\x1b[0m Fetching manifest: ${manifestUrl}...`);
+                if (typeof esptooljs === 'undefined') return alert("Library missing!");
+
+                term.writeln(`\n> [INIT] Fetching ${manifestUrl}...`);
                 const resp = await fetch(manifestUrl);
-                if (!resp.ok) throw new Error(`Manifest error: ${resp.status}`);
                 const manifest = await resp.json();
 
-                // Passo B: Abrir Porta Serial
-                term.writeln('\x1b[1;34m[USER]\x1b[0m Please select serial port...');
-                const port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-
-                // Passo C: Ligar ao ESP32
-                term.writeln('\x1b[1;34m[CONN]\x1b[0m Connecting to bootloader...');
+                term.writeln('> [USER] Select Serial Port...');
                 
-                // NOTA: Na v0.2.2, a classe chama-se ESPLoader diretamente no window
-                const transport = new Transport(port);
-                esploader = new ESPLoader(transport, 115200, null);
-
-                // Redirecionar logs internos para o nosso terminal
-                // (Truque para ver o que a lib está a fazer)
-                const originalLog = console.log;
-                console.log = function(msg) {
-                    term.writeln(`  [LOG] ${msg}`);
-                    originalLog(msg);
-                };
-
-                await esploader.main_fn();
-                term.writeln('\x1b[1;32m[INFO] Chip Detected & Connected!\x1b[0m');
-
-                // Passo D: Apagar Flash
-                term.writeln('\x1b[1;33m[WIPE] Erasing Flash (This takes time)...\x1b[0m');
-                document.getElementById('status-text').innerText = "ERASING...";
-                await esploader.erase_flash();
-                term.writeln('       Flash Erased Successfully.');
-
-                // Passo E: Escrever Ficheiros
-                const parts = manifest.builds[0].parts;
-                let totalFiles = parts.length;
-                let currentFile = 0;
-
-                for (let part of parts) {
-                    currentFile++;
-                    term.writeln(`\n\x1b[1;34m[DL]\x1b[0m Downloading ${part.path}...`);
-                    
-                    const binResp = await fetch(part.path);
-                    const bin = await binResp.arrayBuffer();
-                    const data = new Uint8Array(bin);
-
-                    term.writeln(`\x1b[1;34m[WRITE]\x1b[0m Writing ${bin.byteLength} bytes to 0x${part.offset.toString(16)}...`);
-                    
-                    await esploader.write_flash(
-                        [{ data: data, address: part.offset }],
-                        'keep',
-                        false,
-                        true,
-                        (fileIndex, written, total) => {
-                            const pct = Math.round((written / total) * 100);
-                            document.getElementById('status-text').innerText = `File ${currentFile}/${totalFiles}: ${pct}%`;
-                            document.getElementById('p-fill').style.width = `${pct}%`;
-                            // Barra de progresso textual
-                            if (pct % 5 === 0 && pct > 0) term.write('.');
-                        }
-                    );
-                    term.write(' DONE');
+                let port;
+                try {
+                    port = await navigator.serial.requestPort();
+                    await port.open({ baudRate: 115200 });
+                } catch (err) {
+                    if (err.message.includes("already open")) {
+                        term.writeln('\x1b[1;31m> ERROR: PORT LOCKED! PLEASE RELOAD PAGE (F5) OR UNPLUG USB.\x1b[0m');
+                        alert("PORTA BLOQUEADA! Faz refresh à página (F5) e tenta de novo.");
+                    } else {
+                        term.writeln(`> ERROR: ${err.message}`);
+                    }
+                    return;
                 }
 
-                // Passo F: Reset
-                term.writeln('\n\n\x1b[1;32m[RESET] Hard Resetting Device...\x1b[0m');
-                await esploader.hard_reset();
-                await port.close();
+                term.writeln('> [CONN] Connecting to ESP32...');
                 
-                // Restaurar console.log
-                console.log = originalLog;
+                // CORREÇÃO: Usar 'esptooljs.Transport' em vez de apenas 'Transport'
+                const transport = new esptooljs.Transport(port);
+                const loader = new esptooljs.ESPLoader(transport, 115200, null);
 
-                term.writeln('\n=======================================');
-                term.writeln('\x1b[1;32m   ✅ FLASH COMPLETED SUCCESSFULLY\x1b[0m');
-                term.writeln('=======================================');
-                document.getElementById('status-text').innerText = "SUCCESS - REBOOTING";
-                document.getElementById('p-fill').style.background = "#00ff00";
+                // Logs visíveis
+                loader.debug = (s) => term.writeln(`  [DBG] ${s}`);
+                loader.info = (s) => term.writeln(`  [INF] ${s}`);
+
+                const chip = await loader.main_fn();
+                term.writeln(`> [INFO] Connected to ${chip}`);
+
+                term.writeln('> [WIPE] Erasing Flash...');
+                await loader.erase_flash();
+
+                const parts = manifest.builds[0].parts;
+                for (let part of parts) {
+                    term.writeln(`> [DL] Downloading ${part.path}...`);
+                    const bin = await fetch(part.path).then(r => r.arrayBuffer());
+                    
+                    term.writeln(`> [WRITE] Writing to 0x${part.offset.toString(16)}...`);
+                    
+                    await loader.write_flash({
+                        fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
+                        flash_size: 'keep',
+                        erase_all: false,
+                        compress: true,
+                        reportProgress: (fileIndex, written, total) => {
+                            const pct = Math.round((written / total) * 100);
+                            document.getElementById('status-bar').innerText = `Flashing: ${pct}%`;
+                            if (pct % 5 === 0) term.write('.');
+                        }
+                    });
+                    term.write(' OK');
+                }
+
+                term.writeln('\n> [RESET] Hard Resetting...');
+                await loader.hard_reset();
+                await port.close();
+
+                term.writeln('\n\x1b[1;32m> ✅ SUCCESS! ENJOY YOUR MARAUDER.\x1b[0m');
+                document.getElementById('status-bar').innerText = "DONE";
 
             } catch (e) {
-                term.writeln(`\n\x1b[1;31m❌ ERROR: ${e.message}\x1b[0m`);
+                term.writeln(`\n\x1b[1;31m> CRITICAL ERROR: ${e.message}\x1b[0m`);
                 console.error(e);
-                document.getElementById('status-text').innerText = "FAILED";
-                document.getElementById('p-fill').style.background = "#ff0000";
-            } finally {
-                btns.forEach(b => b.disabled = false);
             }
         }
     </script>
