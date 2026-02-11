@@ -2,22 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER FLASHER C5</title>
+    <title>CYBER DECK C5</title>
+    <!-- 1. O Instalador que FUNCIONA -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+    
+    <!-- 2. O teu Terminal bonito (Xterm) -->
+    <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
+    <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://unpkg.com/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
     <style>
-        body {
-            background: #111;
-            color: #0f0;
-            font-family: monospace;
-            text-align: center;
-            padding: 50px;
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; height: 100vh; margin: 0; }
+        
+        #sidebar { width: 300px; background: #111; padding: 20px; border-right: 1px solid #333; }
+        #main { flex: 1; display: flex; flex-direction: column; background: #000; }
+        
+        h2 { margin-top: 0; color: #fff; }
+        
+        /* Estilo do botão de install */
+        esp-web-install-button { display: block; margin-bottom: 20px; }
+        esp-web-install-button button {
+            background: #004400 !important; color: #0f0 !important;
+            border: 1px solid #0f0 !important; padding: 10px !important; width: 100%;
         }
-        h1 { color: #fff; }
+
+        /* Terminal */
+        #terminal { flex: 1; padding: 10px; }
+        
+        /* Botão conectar serial */
+        #connectBtn {
+            position: absolute; top: 10px; right: 20px; z-index: 100;
+            background: #00ff41; color: #000; border: none; padding: 10px 20px;
+            font-weight: bold; cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <h1>⚡ MARAUDER C5 FLASHER ⚡</h1>
-    <p>ESP32-C5 Beta</p>
-    <esp-web-install-button manifest="manifest_c5.json"></esp-web-install-button>
+
+    <div id="sidebar">
+        <h2>FLASHER</h2>
+        
+        <p>1. Clica aqui para instalar:</p>
+        <!-- O botão Mágico que funciona com C5 -->
+        <esp-web-install-button manifest="manifest_c5.json">
+            <button slot="activate">INSTALL C5 FIRMWARE</button>
+        </esp-web-install-button>
+
+        <esp-web-install-button manifest="manifest_std.json">
+            <button slot="activate">INSTALL STD</button>
+        </esp-web-install-button>
+        
+        <hr style="border-color: #333;">
+        
+        <p>2. Quando acabar, clica em "CONNECT SERIAL" ali em cima para ver o boot.</p>
+    </div>
+
+    <div id="main">
+        <button id="connectBtn">CONNECT SERIAL</button>
+        <div id="terminal"></div>
+    </div>
+
+    <script>
+        // Configuração do Terminal
+        const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14 });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+        window.onresize = () => fitAddon.fit();
+        
+        term.writeln('> SYSTEM ONLINE.');
+        term.writeln('> Step 1: Use the buttons on the left to Flash.');
+        term.writeln('> Step 2: Click CONNECT SERIAL to monitor boot.');
+
+        // Lógica do Serial Monitor
+        let port, reader;
+        document.getElementById('connectBtn').onclick = async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                term.writeln('\n> CONNECTED TO SERIAL LOGS...');
+                
+                const decoder = new TextDecoderStream();
+                port.readable.pipeTo(decoder.writable);
+                reader = decoder.readable.getReader();
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    term.write(value);
+                }
+            } catch (e) { term.writeln(`\n> ERROR: ${e}`); }
+        };
+    </script>
 </body>
 </html>
