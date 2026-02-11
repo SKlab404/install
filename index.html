@@ -2,149 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER TANK FLASHER</title>
-    <!-- CSS BÁSICO PARA NÃO HAVER ERROS DE RENDERIZAÇÃO -->
+    <title>MARAUDER INSTALLER</title>
+    <!-- Carrega a ferramenta oficial, sem invenções -->
+    <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <style>
-        body { background-color: #000; color: #0f0; font-family: monospace; margin: 0; padding: 20px; }
-        #loading { position: fixed; top:0; left:0; width:100%; height:100%; background: #111; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hidden { display: none !important; }
+        body { background: #111; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        h1 { margin-bottom: 2rem; }
+        .card { background: #222; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); text-align: center; width: 300px; }
         
-        #main-ui { display: flex; flex-direction: column; gap: 10px; max-width: 800px; margin: 0 auto; }
-        button { padding: 15px; background: #004400; color: #fff; border: 1px solid #0f0; cursor: pointer; font-size: 16px; font-family: monospace; }
-        button:hover { background: #006600; }
-        button:disabled { background: #333; color: #777; border-color: #555; }
-        
-        #term-container { background: #000; border: 1px solid #333; height: 400px; padding: 10px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-        .log-entry { margin: 2px 0; }
-        .log-debug { color: #555; }
-        .log-info { color: #0f0; }
-        .log-error { color: #f00; font-weight: bold; }
+        esp-web-install-button {
+            display: block;
+            margin: 10px 0;
+            --esp-tools-button-color: #00ff41; /* Verde Hacker */
+            --esp-tools-button-text-color: #000;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 1. LOADING OVERLAY -->
-    <div id="loading">
-        <h1>LOADING LIBRARIES...</h1>
-        <p id="load-status">Fetching esptool-js...</p>
-        <button onclick="location.reload()" style="margin-top:20px;">REFRESH PAGE</button>
-    </div>
+    <h1>MARAUDER FLASHER</h1>
 
-    <!-- 2. UI PRINCIPAL (ESCONDIDA ATÉ CARREGAR) -->
-    <div id="main-ui" class="hidden">
-        <h2 style="text-align:center; border-bottom: 1px solid #333; padding-bottom:10px;">MARAUDER FLASHER V10</h2>
+    <div class="card">
+        <h3>ESCOLHE A VERSÃO</h3>
         
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-            <button onclick="runFlash('manifest_c5.json')">FLASH C5</button>
-            <button onclick="runFlash('manifest_std.json')">FLASH STD</button>
-            <button onclick="runFlash('manifest_bruce.json')" style="border-color:red">FLASH BRUCE</button>
-        </div>
+        <!-- Botão Oficial -->
+        <esp-web-install-button 
+            manifest="manifest_c5.json">
+            <button slot="activate">INSTALL C5 (BETA)</button>
+        </esp-web-install-button>
 
-        <div id="progress-bar" style="width:100%; height:20px; background:#222; margin-top:10px;">
-            <div id="progress-fill" style="width:0%; height:100%; background:#0f0; transition: width 0.2s;"></div>
-        </div>
-        <div id="status-text" style="text-align:center; color:#aaa;">Ready</div>
+        <esp-web-install-button 
+            manifest="manifest_std.json">
+            <button slot="activate">INSTALL STD</button>
+        </esp-web-install-button>
 
-        <!-- TERMINAL SIMPLES (DIV, SEM XTERM PARA MENOS ERROS) -->
-        <div id="term-container"></div>
+        <esp-web-install-button 
+            manifest="manifest_bruce.json">
+            <button slot="activate" style="background:red; color:white;">INSTALL BRUCE</button>
+        </esp-web-install-button>
+
+        <p style="font-size:0.8em; color:#888; margin-top:20px;">
+            DICA: No popup, clica em "LOGS" para ver o progresso real.
+        </p>
     </div>
 
-    <!-- 3. SCRIPTS CARREGADOS NO FIM -->
-    <script>
-        // Logger manual para o div
-        function log(msg, type = 'info') {
-            const d = document.getElementById('term-container');
-            const l = document.createElement('div');
-            l.className = `log-entry log-${type}`;
-            l.innerText = msg;
-            d.appendChild(l);
-            d.scrollTop = d.scrollHeight;
-        }
-
-        // Verificar suporte Web Serial
-        if (!navigator.serial) {
-            document.getElementById('load-status').innerText = "ERROR: Web Serial API not supported! Use Chrome or Edge.";
-            document.getElementById('load-status').style.color = "red";
-            throw new Error("No Web Serial");
-        }
-    </script>
-
-    <!-- CARREGAR A LIB (COM HANDLERS DE SUCESSO/ERRO) -->
-    <script src="https://unpkg.com/esptool-js@0.5.4/bundle.js" 
-            onload="libLoaded()" 
-            onerror="libError()"></script>
-
-    <script>
-        function libLoaded() {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('main-ui').classList.remove('hidden');
-            log("System Ready. Library Loaded v0.5.4");
-        }
-
-        function libError() {
-            document.getElementById('load-status').innerText = "FAILED TO LOAD ESPTOOL LIBRARY.\nCheck internet or try VPN.";
-            document.getElementById('load-status').style.color = "red";
-        }
-
-        async function runFlash(manifestUrl) {
-            try {
-                if(typeof esptooljs === 'undefined') return log("Library not ready!", "error");
-
-                log(`Fetching ${manifestUrl}...`);
-                const resp = await fetch(manifestUrl);
-                if (!resp.ok) throw new Error(`Manifest error: ${resp.status}`);
-                const manifest = await resp.json();
-
-                log("Select Port...");
-                const port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 115200 });
-
-                log("Connecting...", "info");
-                const transport = new esptooljs.Transport(port);
-                const loader = new esptooljs.ESPLoader(transport, 115200, null);
-
-                // Logs redirecionados
-                loader.debug = (s) => log(`[DBG] ${s}`, 'debug');
-                loader.info = (s) => log(`[INF] ${s}`, 'info');
-
-                const chip = await loader.main_fn();
-                log(`Connected to ${chip}`, "info");
-
-                log("Erasing Flash...", "info");
-                await loader.erase_flash();
-
-                const parts = manifest.builds[0].parts;
-                for (let part of parts) {
-                    log(`Downloading ${part.path}...`);
-                    const bin = await fetch(part.path).then(r => r.arrayBuffer());
-                    
-                    log(`Writing ${bin.byteLength} bytes at 0x${part.offset.toString(16)}...`);
-                    await loader.write_flash({
-                        fileArray: [{ data: new Uint8Array(bin), address: part.offset }],
-                        flash_size: 'keep',
-                        erase_all: false,
-                        compress: true,
-                        reportProgress: (fileIndex, written, total) => {
-                            const pct = Math.round((written / total) * 100);
-                            document.getElementById('progress-fill').style.width = `${pct}%`;
-                            document.getElementById('status-text').innerText = `${pct}%`;
-                        }
-                    });
-                }
-
-                log("RESETTING DEVICE...", "info");
-                await loader.hard_reset();
-                await port.close();
-                
-                log("DONE! HAPPY HACKING.", "info");
-                document.getElementById('status-text').innerText = "SUCCESS";
-                document.getElementById('progress-fill').style.background = "#00ff00";
-
-            } catch (e) {
-                log(`ERROR: ${e.message}`, "error");
-                console.error(e);
-            }
-        }
-    </script>
 </body>
 </html>
