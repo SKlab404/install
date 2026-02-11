@@ -4,8 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CYBER FLASHER PRO</title>
-    <!-- ESPTOOL-JS BUNDLE -->
-    <script src="https://unpkg.com/esptool-js@0.5.4/bundle.js"></script>
+    
+    <!-- VERSÃO COMPROVADA (Adafruit/Espressif) -->
+    <script type="module">
+        import { Transport, ESPLoader } from 'https://unpkg.com/esptool-js@0.4.2/lib/index.js';
+        window.Transport = Transport;
+        window.ESPLoader = ESPLoader;
+    </script>
+    
     <!-- XTERM.JS -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@5.3.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@5.3.0/lib/xterm.js"></script>
@@ -17,11 +23,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #000; color: #00ff41; font-family: 'Orbitron', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        #intro-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: pointer; transition: opacity 1s ease-out;
-        }
+        #intro-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: opacity 1s ease-out; }
         .intro-text { font-size: 30px; letter-spacing: 5px; text-shadow: 0 0 20px #00ff41; animation: blink 2s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
@@ -86,10 +88,8 @@
     </main>
 
     <script>
-        // GLOBALS
         let port, reader, writer, readableStreamClosed, writableStreamClosed;
 
-        // INTRO
         function startSystem() {
             const overlay = document.getElementById('intro-overlay');
             overlay.style.opacity = '0';
@@ -97,8 +97,7 @@
             new Audio('intro.mp3').play().catch(()=>{});
         }
 
-        // TERMINAL SETUP
-        const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14 });
+        const term = new Terminal({ theme: { background: '#000', foreground: '#00ff41' }, fontFamily: 'Courier New', fontSize: 14, convertEol: true });
         const fitAddon = new FitAddon.FitAddon();
         term.loadAddon(fitAddon);
         term.open(document.getElementById('terminal'));
@@ -106,12 +105,13 @@
         window.onresize = () => fitAddon.fit();
         term.writeln('> SYSTEM ONLINE. WAITING FOR COMMAND...');
 
-        // HELPER: CLOSE PORT
         async function closePort() {
             if (port) {
-                if (reader) { await reader.cancel(); await readableStreamClosed.catch(()=>{}); reader = null; }
-                if (writer) { await writer.close(); await writableStreamClosed.catch(()=>{}); writer = null; }
-                await port.close();
+                try {
+                    if (reader) { await reader.cancel(); await readableStreamClosed.catch(()=>{}); reader = null; }
+                    if (writer) { await writer.close(); await writableStreamClosed.catch(()=>{}); writer = null; }
+                    await port.close();
+                } catch (e) {}
                 port = null;
                 document.getElementById('connectBtn').innerText = 'CONNECT SERIAL';
                 document.getElementById('connectBtn').classList.remove('disconnect');
@@ -119,10 +119,10 @@
             }
         }
 
-        // FLASH FUNCTION
         async function flash(manifestUrl) {
             try {
-                // FECHA PORTA SE ESTIVER ABERTA
+                if (!window.ESPLoader) { throw new Error("ESPLoader not loaded! Refresh page."); }
+
                 await closePort();
 
                 term.writeln(`\n> Loading ${manifestUrl}...`);
@@ -130,49 +130,52 @@
                 if (!resp.ok) throw new Error(`Manifest error: ${resp.status}`);
                 const manifest = await resp.json();
 
-                term.writeln(`> Requesting serial port for ${manifest.name}...`);
-                // NOTA: O user tem de selecionar a porta aqui!
+                term.writeln(`> Target: ${manifest.name}`);
+                term.writeln('> Requesting serial port...');
+                
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
                 term.writeln('> Connecting to bootloader...');
                 
-                // --- AQUI ESTAVA O ERRO, AGORA CORRIGIDO ---
-                const transport = new esptooljs.Transport(port);
-                const loader = new esptooljs.ESPLoader(transport, 115200, {
-                    clean: () => term.clear(),
-                    writeLine: (l) => term.writeln(l),
-                    write: (s) => term.write(s)
-                });
-
-                const chip = await loader.main();
+                // USAR CLASSES GLOBAIS
+                const transport = new Transport(port);
+                const esploader = new ESPLoader(transport, 115200, null);
+                
+                const chip = await esploader.main_fn(); // main_fn() é a função correta no 0.4.2 module
                 term.writeln(`> Chip Detected: ${chip}`);
                 
                 term.writeln('> Erasing flash...');
-                await loader.eraseFlash();
+                await esploader.erase_flash(); // erase_flash() no 0.4.2 module
 
                 const fileItem = manifest.builds[0].parts[0];
-                term.writeln(`> Downloading firmware: ${fileItem.path}`);
-                const fileData = await fetch(fileItem.path).then(r => r.arrayBuffer());
+                term.writeln(`> Fetching: ${fileItem.path}`);
+                const binResp = await fetch(fileItem.path);
+                if (!binResp.ok) throw new Error('Firmware file not found');
+                const fileData = await binResp.arrayBuffer();
                 
-                term.writeln(`> Flashing ${fileData.byteLength} bytes at offset ${fileItem.offset}...`);
-                await loader.writeFlash({
-                    fileArray: [{ data: new Uint8Array(fileData), address: fileItem.offset }],
-                    flashSize: 'keep',
-                    eraseAll: false,
-                    compress: true,
-                });
+                term.writeln(`> Writing ${fileData.byteLength} bytes...`);
+                // write_flash no 0.4.2 module
+                await esploader.write_flash(
+                    {
+                        fileArray: [{ data: new Uint8Array(fileData), address: fileItem.offset }],
+                        flash_size: 'keep',
+                        erase_all: false,
+                        compress: true,
+                    },
+                    {
+                        reportProgress: (fileIndex, written, total) => {
+                             term.write(`\r> Progress: ${Math.round((written/total)*100)}%`);
+                        },
+                    }
+                );
 
-                term.writeln('> Resetting device...');
-                await transport.setDTR(false);
-                await transport.setRTS(true);
-                await new Promise(r => setTimeout(r, 100));
-                await transport.setRTS(false);
-                
-                await port.close(); 
+                term.writeln('\n> Resetting...');
+                await esploader.hard_reset();
+                await port.close();
                 port = null;
-                
-                term.writeln('\x1b[1;32m> FLASH COMPLETE! Click "CONNECT SERIAL" to view logs.\x1b[0m');
+
+                term.writeln('\x1b[1;32m\n> ✓ FLASH COMPLETE!\x1b[0m');
 
             } catch (e) {
                 term.writeln(`\n\x1b[1;31m> ERROR: ${e.message}\x1b[0m`);
@@ -180,12 +183,11 @@
             }
         }
 
-        // SERIAL MONITOR
         const connectBtn = document.getElementById('connectBtn');
         const cmdInput = document.getElementById('cmdInput');
 
         connectBtn.onclick = async () => {
-            if (port) { await closePort(); return; } 
+            if (port) { await closePort(); return; }
             
             try {
                 port = await navigator.serial.requestPort();
@@ -219,6 +221,7 @@
                 cmdInput.value = '';
             }
         };
+
         document.getElementById('clearBtn').onclick = () => term.clear();
     </script>
 </body>
