@@ -1,14 +1,13 @@
 {
-  "name": "Marauder Standard",
-  "version": "v1",
+  "name": "Marauder ESP32",
+  "version": "v1.8.5",
+  "home_assistant_domain": "esphome",
+  "new_install_prompt_erase": true,
   "builds": [
     {
       "chipFamily": "ESP32",
       "parts": [
-        {
-          "path": "firmware/marauder_std.bin",
-          "offset": 65536
-        }
+        { "path": "firmware/marauder_std.bin", "offset": 0 }
       ]
     }
   ]
