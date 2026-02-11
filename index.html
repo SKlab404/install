@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V28 (FINAL FIX)</title>
+    <title>MARAUDER V29 (HARD RESET)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
@@ -14,6 +14,7 @@
         button { padding: 15px 25px; margin: 0 10px; background: #003300; color: #fff; border: 1px solid #0f0; cursor: pointer; font-weight: bold; }
         button:hover { background: #005500; }
         button:disabled { background: #222; color: #555; border-color: #444; }
+        #btn-reset { background: #500; border-color: #f00; display: none; } /* Escondido por defeito */
         #term { flex: 1; padding: 10px; }
     </style>
 </head>
@@ -23,6 +24,7 @@
         <button id="btn-c5" onclick="flash('manifest_c5.json')" disabled>A CARREGAR...</button>
         <button id="btn-std" onclick="flash('manifest_std.json')" disabled>A CARREGAR...</button>
         <button id="btn-bruce" onclick="flash('manifest_bruce.json')" disabled style="color:#f55; border-color:#f55">BRUCE</button>
+        <button id="btn-reset" onclick="location.reload()">⚠️ RESET PORTA</button>
     </div>
 
     <div id="term"></div>
@@ -33,7 +35,7 @@
         window.Transport = esptool.Transport;
         window.libReady = true;
         if (window.term) {
-            window.term.writeln('\x1b[1;32m> SISTEMA PRONTO (V28)\x1b[0m');
+            window.term.writeln('\x1b[1;32m> SISTEMA V29 PRONTO\x1b[0m');
             enableButtons();
         }
     </script>
@@ -46,7 +48,7 @@
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V28 ===');
+        term.writeln('=== MARAUDER V29 (ANTI-LOCK) ===');
         let currentPort = null;
 
         const check = setInterval(() => {
@@ -55,18 +57,18 @@
 
         function enableButtons() {
             if(document.getElementById('btn-c5').innerText !== "A CARREGAR...") return;
-            document.querySelectorAll('button').forEach(b => {
+            document.querySelectorAll('button:not(#btn-reset)').forEach(b => {
                 b.disabled = false;
                 b.innerText = b.innerText.replace("A CARREGAR...", "FLASH");
             });
         }
 
         async function flash(manifestUrl) {
-            const btns = document.querySelectorAll('button');
+            const btns = document.querySelectorAll('button:not(#btn-reset)');
             btns.forEach(b => b.disabled = true);
 
             try {
-                // 1. LIMPEZA DE PORTA
+                // 1. FORÇA O FECHO ANTES DE ABRIR
                 if (currentPort) {
                     try { await currentPort.close(); } catch(e) {}
                     currentPort = null;
@@ -81,8 +83,18 @@
                 }
 
                 term.writeln('> [2] Porta Serial...');
-                currentPort = await navigator.serial.requestPort();
-                await currentPort.open({ baudRate: 115200 });
+                try {
+                    currentPort = await navigator.serial.requestPort();
+                    await currentPort.open({ baudRate: 115200 });
+                } catch (e) {
+                    if (e.message.includes("already open")) {
+                        term.writeln('\x1b[1;31m> PORTA PRESA! CLICA EM "RESET PORTA" AGORA!\x1b[0m');
+                        document.getElementById('btn-reset').style.display = 'inline-block';
+                        throw new Error("Porta bloqueada. Reinicia a página.");
+                    } else {
+                        throw e;
+                    }
+                }
 
                 term.writeln('> [3] Conectando...');
                 const transport = new window.Transport(currentPort);
@@ -96,25 +108,18 @@
                     }
                 });
 
-                // --- CORREÇÃO INTELIGENTE (Auto-Deteção de Função) ---
+                // Auto-Deteção de Função
                 let chipName = "DESCONHECIDO";
                 try {
-                    if (typeof loader.main === "function") {
-                        term.writeln('> [DEBUG] Usando loader.main()');
-                        chipName = await loader.main();
-                    } else if (typeof loader.main_fn === "function") {
-                        term.writeln('> [DEBUG] Usando loader.main_fn()');
-                        chipName = await loader.main_fn();
-                    } else {
-                        // Último recurso: conectar manualmente sem identificação completa
-                        term.writeln('> [DEBUG] Função main não encontrada. Tentando stub manual...');
-                        await loader.connect(); 
+                    if (typeof loader.main === "function") chipName = await loader.main();
+                    else if (typeof loader.main_fn === "function") chipName = await loader.main_fn();
+                    else {
+                        await loader.connect();
                         chipName = "Genérico (Stub)";
                     }
                 } catch (e) {
-                    // Ignorar erro de Chip Desconhecido (C5)
-                    if (e.message.includes("Unknown Chip") || e.message.includes("0x5fd1406f") || e.message.includes("1607549039")) {
-                        term.writeln('\x1b[1;33m> AVISO: Chip C5 não oficial detetado. Forçando continuação!\x1b[0m');
+                    if (e.message.includes("Unknown Chip") || e.message.includes("0x5fd1406f")) {
+                        term.writeln('\x1b[1;33m> AVISO: Forçando Chip C5...\x1b[0m');
                         chipName = "ESP32-C5 (Forced)";
                     } else {
                         throw e;
@@ -123,7 +128,7 @@
                 
                 term.writeln(`> Chip: ${chipName}`);
                 
-                term.writeln('> [4] A APAGAR FLASH (Aguarda)...');
+                term.writeln('> [4] A APAGAR FLASH...');
                 await loader.erase_flash();
 
                 term.writeln('> [5] A ESCREVER...');
