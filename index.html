@@ -196,6 +196,7 @@ const originalConsoleLog = console.log;
 console.log = function (...args) {
     const msg = args.join(" ");
 
+    // Detectar modelo
     if (msg.includes("ESP32-C5")) {
         term.writeln("\n[DEVICE] ESP32-C5 detected");
         document.getElementById("btnC5").style.display="inline-block";
@@ -211,6 +212,7 @@ console.log = function (...args) {
         document.getElementById("btnS3").style.display="inline-block";
     }
 
+    // Progresso real
     if (
         msg.includes("Writing") ||
         msg.includes("%") ||
@@ -219,8 +221,19 @@ console.log = function (...args) {
         term.writeln("> " + msg);
     }
 
+    // 🔥 DETETAR FIM REAL DO FLASH
+    if (
+        msg.includes("Hash of data verified") ||
+        msg.includes("Leaving...")
+    ) {
+
+        document.getElementById("buttons").style.display="none";
+        document.getElementById("successScreen").style.display="flex";
+    }
+
     originalConsoleLog.apply(console, args);
 };
+
 
 /* STATE EVENTS */
 document.querySelectorAll("esp-web-install-button")
@@ -256,3 +269,4 @@ document.querySelectorAll("esp-web-install-button")
 
 </body>
 </html>
+
