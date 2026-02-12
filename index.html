@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 CYBER TERMINAL</title>
+<title>SKLAB404 Terminal</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,10 +13,10 @@
 <style>
 body{
     margin:0;
-    background:black;
+    background:#000;
     font-family:monospace;
-    color:#00ff00;
     overflow:hidden;
+    color:#00ff88;
 }
 
 /* SPLASH */
@@ -24,22 +24,23 @@ body{
     position:fixed;
     width:100%;
     height:100%;
-    background:black;
+    background:#000;
     display:flex;
-    flex-direction:column;
     justify-content:center;
     align-items:center;
+    flex-direction:column;
     cursor:pointer;
     z-index:10;
-    transition:1s;
+    transition:0.6s;
 }
 #splash.fade{
     opacity:0;
     pointer-events:none;
 }
 #splash h1{
-    font-size:4em;
-    text-shadow:0 0 30px #00ff00;
+    font-size:3.5em;
+    letter-spacing:4px;
+    text-shadow:0 0 20px #00ff88;
 }
 
 /* TERMINAL */
@@ -47,7 +48,6 @@ body{
     position:fixed;
     width:100%;
     height:100%;
-    z-index:1;
 }
 
 /* BOTÃO */
@@ -56,18 +56,21 @@ body{
     bottom:40px;
     left:50%;
     transform:translateX(-50%);
-    z-index:1000;
     display:none;
+    z-index:1000;
 }
 
 .cyberBtn{
-    background:#002200 !important;
-    color:#00ff00 !important;
-    border:2px solid #00ff00 !important;
-    padding:15px 40px !important;
-    font-size:16px !important;
+    background:#001a12 !important;
+    color:#00ff88 !important;
+    border:2px solid #00ff88 !important;
+    padding:14px 35px !important;
+    font-size:15px !important;
     cursor:pointer !important;
-    box-shadow:0 0 15px #00ff00 !important;
+    letter-spacing:2px;
+}
+.cyberBtn:hover{
+    background:#002b1f !important;
 }
 </style>
 </head>
@@ -75,7 +78,7 @@ body{
 
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
-    <p>Click to initialize system...</p>
+    <p>Click to initialize terminal</p>
 </div>
 
 <div id="term"></div>
@@ -93,8 +96,8 @@ body{
 const term = new Terminal({
     theme:{
         background:'#000000',
-        foreground:'#00ff00',
-        cursor:'#00ff00'
+        foreground:'#00ff88',
+        cursor:'#00ff88'
     },
     fontFamily:'Courier New, monospace',
     fontSize:14,
@@ -109,7 +112,7 @@ window.addEventListener('resize',()=>fit.fit());
 
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function type(text, delay=40){
+async function type(text, delay=35){
     for(let i=0;i<text.length;i++){
         term.write(text[i]);
         await sleep(delay);
@@ -121,55 +124,66 @@ function enter(){
 
     document.getElementById("splash").classList.add("fade");
 
-    // ⚠️ COLOCA AQUI O LINK RAW CORRETO DO MP3
+    // INTRO MUSIC (confirma que é RAW link válido)
     const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
-    intro.volume = 0.6;
+    intro.volume = 0.5;
     intro.play().catch(()=>{});
 
-    setTimeout(startSequence, 800);
+    setTimeout(startSequence,600);
 }
 
 async function startSequence(){
 
-    await type("Establishing secure connection...");
-    await sleep(600);
+    await type("Booting secure environment...");
+    await sleep(400);
 
-    await type("Decrypting environment...");
-    await sleep(600);
+    await type("Loading system modules...");
+    await sleep(400);
 
-    await type("Loading kernel modules...");
-    await sleep(600);
+    await type("Establishing encrypted channel...");
+    await sleep(400);
 
     term.write("\r\n");
     await type("Are you there?");
-    await sleep(1200);
+    await sleep(800);
 
-    await type("...");
-
-    await sleep(1000);
     await type("Connection established.");
-    await sleep(500);
-
     term.write("\r\n");
-    await type("System ready.");
-    await sleep(500);
 
-    term.write("\r\n");
     term.writeln("\x1b[1;33mAuthorization required.\x1b[0m");
 
-    document.getElementById("flashArea").style.display = "block";
+    document.getElementById("flashArea").style.display="block";
 }
 
-/* PROGRESSO REAL */
+/* CAPTURA LOGS REAIS + MODELO DO CHIP */
 const originalConsoleLog = console.log;
+
 console.log = function (...args) {
     const msg = args.join(" ");
-    if (msg.includes("Writing") || msg.includes("%") || msg.includes("Erasing")) {
+
+    // progresso real
+    if (
+        msg.includes("Writing") ||
+        msg.includes("%") ||
+        msg.includes("Erasing")
+    ) {
         term.writeln("> " + msg);
     }
+
+    // modelo do chip
+    if (
+        msg.includes("Chip is") ||
+        msg.includes("Detecting chip type") ||
+        msg.includes("ESP32") ||
+        msg.includes("ESP8266")
+    ) {
+        term.writeln("\x1b[1;36m[DEVICE] " + msg + "\x1b[0m");
+    }
+
     originalConsoleLog.apply(console, args);
 };
 
+/* ESTADOS */
 document.querySelector("esp-web-install-button")
 .addEventListener("state-change",(e)=>{
     if(e.detail.state==="INSTALLING"){
@@ -179,7 +193,7 @@ document.querySelector("esp-web-install-button")
         term.writeln("\x1b[1;32m✓ Flash complete\x1b[0m");
     }
     if(e.detail.state==="ERROR"){
-        term.writeln("\x1b[1;31m✗ "+e.detail.error+"\x1b[0m");
+        term.writeln("\x1b[1;31m✗ " + e.detail.error + "\x1b[0m");
     }
 });
 
