@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>SKLAB404 V47</title>
+    <title>SKLAB404 V48</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -10,112 +10,223 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #header { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; font-family: monospace; }
-        #controls { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; }
+        /* MATRIX MODERNO MINIMAL */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
         
-        /* Botões dark - SEM caixa branca */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: linear-gradient(135deg, #000011, #000022); 
+            color: #00ff88; 
+            font-family: 'Orbitron', monospace; 
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* MATRIX LEVE - só linhas finas */
+        #matrix-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.1; z-index: 1; pointer-events: none;
+        }
+
+        .container { 
+            display: flex; flex-direction: column; 
+            height: 100vh; max-width: 1200px; margin: 0 auto; 
+            position: relative; z-index: 10;
+        }
+
+        #header { 
+            padding: 30px 20px; 
+            text-align: center; 
+            background: rgba(0,0,20,0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0,255,136,0.3);
+            box-shadow: 0 4px 30px rgba(0,255,136,0.1);
+        }
+        
+        h1 { 
+            font-size: 2.5em; 
+            margin: 0; 
+            letter-spacing: 4px;
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0,255,136,0.5);
+        }
+
+        #controls { 
+            padding: 40px 20px; 
+            text-align: center; 
+            background: rgba(0,0,10,0.7);
+            backdrop-filter: blur(15px);
+        }
+        
+        /* CAIXAS BRANCAS INVISÍVEIS */
         esp-web-install-button {
             --esp-tools-card-background-color: transparent !important;
             --esp-tools-card-border-color: transparent !important;
             --esp-tools-card-shadow: none !important;
+            margin: 0 20px;
+            display: inline-block;
         }
         esp-web-install-button button {
-            background: #004400 !important; color: #fff !important; 
-            border: 2px solid #0f0 !important; padding: 15px 30px !important;
-            font-weight: bold !important; cursor: pointer !important;
-            font-family: monospace !important; text-transform: uppercase !important;
+            background: linear-gradient(145deg, rgba(0,100,50,0.9), rgba(0,150,80,0.9)) !important;
+            color: #fff !important; 
+            border: 2px solid #00ff88 !important; 
+            padding: 20px 40px !important;
+            font-size: 1.15em; font-weight: 700 !important; 
+            cursor: pointer !important;
+            font-family: 'Orbitron', monospace !important; 
+            text-transform: uppercase !important;
+            border-radius: 15px !important;
+            box-shadow: 
+                0 8px 32px rgba(0,255,136,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.2) !important;
+            transition: all 0.4s cubic-bezier(0.25,0.46,0.45,0.94) !important;
+            min-width: 180px;
+            position: relative;
+            overflow: hidden;
         }
-        esp-web-install-button button:hover { background: #006600 !important; box-shadow: 0 0 15px #0f0 !important; }
+        esp-web-install-button button::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        esp-web-install-button button:hover::before { left: 100%; }
+        esp-web-install-button button:hover { 
+            transform: translateY(-5px) scale(1.02) !important;
+            box-shadow: 0 20px 40px rgba(0,255,136,0.6) !important;
+        }
 
-        #term { flex: 1; padding: 10px; }
+        #term { 
+            flex: 1; padding: 30px; 
+            background: rgba(0,0,5,0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0,255,136,0.2);
+            margin-top: auto;
+        }
     </style>
 </head>
 <body>
+    <canvas id="matrix-bg"></canvas>
+    
+    <div class="container">
+        <div id="header">
+            <h1>SKLAB404</h1>
+            <div style="font-size: 0.9em; opacity: 0.7; margin-top: 8px;">INSTALLER v48 • MATRIX MODE</div>
+        </div>
 
-    <div id="header">
-        <h2>SKLAB404 INSTALLER V47</h2>
-        <div style="font-size: 0.9em; opacity: 0.8;">Click para ativar áudio</div>
+        <div id="controls">
+            <esp-web-install-button manifest="manifest_c5.json">
+                <button slot="activate">🧠 C5</button>
+            </esp-web-install-button>
+
+            <esp-web-install-button manifest="manifest_std.json">
+                <button slot="activate">⚡ STD</button>
+            </esp-web-install-button>
+
+            <esp-web-install-button manifest="manifest_bruce.json">
+                <button slot="activate">🔥 BRUCE</button>
+            </esp-web-install-button>
+        </div>
+
+        <div id="term"></div>
     </div>
-
-    <div id="controls">
-        <esp-web-install-button manifest="manifest_c5.json">
-            <button slot="activate">C5</button>
-        </esp-web-install-button>
-
-        <esp-web-install-button manifest="manifest_std.json">
-            <button slot="activate">STD</button>
-        </esp-web-install-button>
-
-        <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate" style="border-color:#f55 !important;">BRUCE</button>
-        </esp-web-install-button>
-    </div>
-
-    <div id="term"></div>
 
     <script>
-        // TERMINAL PRIMEIRO (garante que funciona)
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
+        // MATRIX LEVE (não sobrecarrega)
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const chars = '01SKLABPTCYBERHACK';
+        const fontSize = 12;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        for(let i = 0; i < columns; i++) drops[i] = 1;
+
+        function matrixRain() {
+            ctx.fillStyle = 'rgba(0,0,20,0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'rgba(0,255,136,0.6)';
+            ctx.font = `${fontSize}px monospace`;
+            
+            for(let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.98)
+                    drops[i] = 0;
+                else drops[i]++;
+            }
+        }
+        setInterval(matrixRain, 80); // Leve
+
+        // TERMINAL
+        const term = new Terminal({ 
+            theme: { background: 'rgba(0,0,5,0.9)', foreground: '#00ff88', cursor: '#00ff88' }, 
+            cursorBlink: true, fontFamily: 'Orbitron, monospace', fontSize: 15
+        });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
-        window.onresize = () => fit.fit();
 
-        term.writeln('=== SKLAB404 V47 ===');
-        term.writeln('> Sistema pronto');
-        term.writeln('> Click num botão para começar\n');
+        term.writeln('\n\x1b[1;32mSKLAB404 v48 • MATRIX ONLINE\x1b[0m');
+        term.writeln('\x1b[1;33mREADY | Seleciona target\x1b[0m\n');
 
-        // ÁUDIO SIMPLES (ativa com clique)
-        document.body.addEventListener('click', function playIntro() {
-            fetch('https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3')
-                .then(r => r.blob())
-                .then(blob => {
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    audio.volume = 0.5;
-                    audio.play();
-                    term.writeln('\x1b[1;33m> Áudio ativado\x1b[0m');
-                }).catch(() => {
-                    // Beep de fallback
-                    const ctx = new AudioContext();
-                    const osc = ctx.createOscillator();
-                    osc.frequency.value = 600;
-                    osc.connect(ctx.destination);
-                    osc.start(); osc.stop(ctx.currentTime + 0.5);
-                    term.writeln('\x1b[1;33m> Beep de boot\x1b[0m');
-                });
-            document.body.removeEventListener('click', playIntro);
+        // ÁUDIO (com GitHub fix + fallback)
+        let audioPlayed = false;
+        document.addEventListener('click', () => {
+            if (!audioPlayed) {
+                audioPlayed = true;
+                fetch('https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3')
+                    .then(r => r.blob())
+                    .then(blob => {
+                        const audio = new Audio(URL.createObjectURL(blob));
+                        audio.volume = 0.4;
+                        audio.play();
+                        term.writeln('\x1b[1;36m✓ Intro.mp3 carregada\x1b[0m');
+                    }).catch(() => {
+                        // Beep hacker
+                        navigator.mediaDevices.getUserMedia({audio:true}).then(() => {
+                            const ctx = new AudioContext();
+                            const osc = ctx.createOscillator();
+                            osc.frequency.setValueAtTime(440, ctx.currentTime);
+                            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+                            osc.connect(ctx.destination);
+                            osc.start(); osc.stop(ctx.currentTime + 0.5);
+                            term.writeln('\x1b[1;36m✓ Beep matrix\x1b[0m');
+                        });
+                    });
+            }
         }, { once: true });
 
-        // LOGS SIMPLES
+        // LOGS + EVENTOS (testado)
         const originalLog = console.log;
         console.log = (...args) => {
             originalLog(...args);
             const msg = args.join(' ');
-            if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
-                term.writeln(`> ${msg}`);
+            if (msg.match(/Writing|Erasing|Connected|%/) ) {
+                term.writeln(`\x1b[1;36mLOG> ${msg}\x1b[0m`);
             }
         };
 
-        // EVENTOS SIMPLES (SUCESSO SEMPRE)
         document.querySelectorAll('esp-web-install-button').forEach(b => {
             b.addEventListener('state-change', (e) => {
-                const btnText = b.querySelector('button').textContent;
-                
-                if (e.detail.state === 'INSTALLING') {
-                    term.writeln(`\n>>> ${btnText}...`);
-                }
+                const name = b.querySelector('button').textContent.trim();
+                if (e.detail.state === 'INSTALLING') term.writeln(`\n\x1b[1;35m>>> ${name}\x1b[0m`);
                 else if (e.detail.state === 'SUCCESS') {
-                    term.writeln('\n\x1b[1;32m✓ SUCESSO! Instalação completa.\x1b[0m');
-                }
-                else if (e.detail.state === 'ERROR') {
-                    if (e.detail.error && (e.detail.error.includes('Improv') || e.detail.error.includes('initialization'))) {
-                        term.writeln('\n\x1b[1;32m✓ SUCESSO! (Wi-Fi erro ignorado)\x1b[0m');
-                    } else if (e.detail.error && e.detail.error.includes('already open')) {
-                        term.writeln('\n\x1b[1;33m⚠ Porta ocupada - Desconecta cabo\x1b[0m');
+                    term.writeln(`\n\x1b[1;32m✓ ${name.toUpperCase()} SUCESSO!\x1b[0m\n`);
+                } else if (e.detail.state === 'ERROR') {
+                    if (e.detail.error?.includes('Improv') || e.detail.error?.includes('initialization')) {
+                        term.writeln(`\n\x1b[1;32m✓ ${name.toUpperCase()} OK (Wi-Fi skip)\x1b[0m\n`);
+                    } else if (e.detail.error?.includes('already open')) {
+                        term.writeln(`\n\x1b[1;33m⚠ ${name} porta ocupada\n> Desconecta cabo USB\x1b[0m`);
                     } else {
-                        term.writeln(`\n\x1b[1;31m✗ ERRO: ${e.detail.error}\x1b[0m`);
+                        term.writeln(`\n\x1b[1;31m✗ ${name} erro: ${e.detail.error}\x1b[0m`);
                     }
                 }
             });
