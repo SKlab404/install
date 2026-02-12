@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Wizard Pro</title>
+<title>SKLAB404 // Wizard Pro+</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -19,53 +19,33 @@ body{
     overflow:hidden;
 }
 
-/* SPLASH */
 #splash{
     position:fixed;
     inset:0;
     background:#0a0f0d;
     display:flex;
-    flex-direction:column;
     justify-content:center;
     align-items:center;
+    flex-direction:column;
     cursor:pointer;
     z-index:20;
     transition:0.5s;
 }
-#splash.fade{
-    opacity:0;
-    pointer-events:none;
-}
+#splash.fade{opacity:0;pointer-events:none;}
 
-/* LAYOUT */
-#container{
-    display:flex;
-    height:100vh;
-}
+#container{display:flex;height:100vh;}
 
-/* SIDEBAR */
 #steps{
     width:220px;
     background:#060a08;
     padding:30px 20px;
     border-right:1px solid #00ff9d22;
 }
+.step{margin-bottom:25px;opacity:0.4;}
+.step.active{opacity:1;}
 
-.step{
-    margin-bottom:25px;
-    opacity:0.4;
-}
-.step.active{
-    opacity:1;
-}
+#main{flex:1;padding:40px;}
 
-/* MAIN */
-#main{
-    flex:1;
-    padding:40px;
-}
-
-/* DEVICE CARDS */
 .deviceCard{
     border:1px solid #00ff9d55;
     padding:20px;
@@ -74,23 +54,21 @@ body{
     margin-right:15px;
     transition:0.3s;
 }
-.deviceCard:hover{
-    background:#002e20;
-}
-.deviceCard.selected{
-    background:#003b2a;
+.deviceCard:hover{background:#002e20;}
+.deviceCard.selected{background:#003b2a;}
+.deviceCard.disabled{
+    opacity:0.3;
+    pointer-events:none;
 }
 
-/* TERMINAL */
 #term{
     width:100%;
-    height:45vh;
+    height:40vh;
     background:#000000ee;
     border:1px solid #00ff9d55;
     margin-top:20px;
 }
 
-/* BUTTON */
 .actionBtn{
     margin-top:20px;
     padding:10px 20px;
@@ -100,7 +78,6 @@ body{
     cursor:pointer;
 }
 
-/* PROGRESS BAR */
 #progressContainer{
     width:100%;
     height:20px;
@@ -115,7 +92,13 @@ body{
     transition:width 0.2s;
 }
 
-/* SUCCESS */
+#advanced{
+    margin-top:15px;
+    border-top:1px solid #00ff9d22;
+    padding-top:10px;
+    display:none;
+}
+
 #success{
     display:none;
     margin-top:30px;
@@ -139,40 +122,49 @@ body{
 
 <div id="main">
 
-    <!-- STEP 1 -->
-    <div id="deviceSelection">
-        <div class="deviceCard" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
-        <div class="deviceCard" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
-        <div class="deviceCard" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
-    </div>
+<!-- STEP 1 -->
+<div id="deviceSelection">
+    <div class="deviceCard" data-model="C5" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
+    <div class="deviceCard" data-model="C3" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
+    <div class="deviceCard" data-model="S3" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
+</div>
 
-    <!-- STEP 2 -->
-    <div id="flashSection" style="display:none;">
+<!-- STEP 2 -->
+<div id="flashSection" style="display:none;">
 
+    <button class="actionBtn" onclick="toggleAdvanced()">Advanced Settings</button>
+
+    <div id="advanced">
         <label>Baud Rate:</label>
         <select id="baudSelect">
             <option value="115200">115200</option>
             <option value="460800">460800</option>
             <option value="921600">921600</option>
         </select>
-
-        <esp-web-install-button id="flashBtn">
-            <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
-        </esp-web-install-button>
-
-        <div id="progressContainer">
-            <div id="progressBar"></div>
-        </div>
-
-        <div id="term"></div>
-
+        <br><br>
+        <label>
+            <input type="checkbox" id="eraseChk">
+            Erase before flash
+        </label>
     </div>
 
-    <!-- STEP 3 -->
-    <div id="success">
-        <h2>FLASH COMPLETE</h2>
-        <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER</button>
+    <esp-web-install-button id="flashBtn">
+        <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
+    </esp-web-install-button>
+
+    <div id="progressContainer">
+        <div id="progressBar"></div>
     </div>
+
+    <div id="term"></div>
+
+</div>
+
+<!-- STEP 3 -->
+<div id="success">
+    <h2>FLASH COMPLETE</h2>
+    <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER</button>
+</div>
 
 </div>
 </div>
@@ -198,6 +190,12 @@ function enter(){
     document.getElementById("splash").classList.add("fade");
 }
 
+/* ADVANCED TOGGLE */
+function toggleAdvanced(){
+    const adv = document.getElementById("advanced");
+    adv.style.display = adv.style.display === "block" ? "none" : "block";
+}
+
 /* DEVICE SELECT */
 function selectDevice(manifest, el){
     document.querySelectorAll(".deviceCard").forEach(e=>e.classList.remove("selected"));
@@ -213,15 +211,20 @@ function selectDevice(manifest, el){
     document.getElementById("step2").classList.add("active");
 }
 
-/* PROGRESS + LOG */
+/* AUTO DETECT + LOG + PROGRESS */
 const originalConsoleLog = console.log;
 
 console.log = function (...args){
 
     const msg = args.join(" ");
 
+    // Auto detect model
     if(msg.includes("ESP32")){
-        term.writeln("[DEVICE] " + msg);
+        term.writeln("[DETECTED] " + msg);
+
+        if(msg.includes("C5")) disableOthers("C5");
+        if(msg.includes("C3")) disableOthers("C3");
+        if(msg.includes("S3")) disableOthers("S3");
     }
 
     if(msg.includes("Writing") || msg.includes("%")){
@@ -242,6 +245,14 @@ console.log = function (...args){
 
     originalConsoleLog.apply(console,args);
 };
+
+function disableOthers(model){
+    document.querySelectorAll(".deviceCard").forEach(card=>{
+        if(card.dataset.model !== model){
+            card.classList.add("disabled");
+        }
+    });
+}
 
 </script>
 </body>
