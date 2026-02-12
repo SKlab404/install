@@ -13,7 +13,7 @@
 <style>
 body{
     margin:0;
-    background:#060b09;
+    background:#050807;
     font-family:monospace;
     overflow:hidden;
     color:#00ff9d;
@@ -25,14 +25,14 @@ canvas{
     top:0;
     left:0;
     z-index:0;
-    opacity:0.08;
+    opacity:0.04; /* 🔥 mais discreto */
 }
 
 /* SPLASH */
 #splash{
     position:fixed;
     inset:0;
-    background:#060b09;
+    background:#050807;
     display:flex;
     flex-direction:column;
     justify-content:center;
@@ -41,31 +41,46 @@ canvas{
     z-index:10;
     transition:0.6s;
 }
+
 #splash h1{
     font-size:3rem;
     letter-spacing:6px;
+    animation: glitch 1.5s infinite;
 }
+
+@keyframes glitch{
+    0%{text-shadow:2px 0 red;}
+    20%{text-shadow:-2px 0 cyan;}
+    40%{text-shadow:2px 0 lime;}
+    60%{text-shadow:-2px 0 cyan;}
+    80%{text-shadow:2px 0 red;}
+    100%{text-shadow:none;}
+}
+
 #splash p{
-    opacity:0.6;
+    opacity:0.5;
     margin-top:20px;
 }
+
 #splash.fade{
     opacity:0;
     pointer-events:none;
 }
 
-/* TERMINAL WRAPPER */
+/* TERMINAL */
 #terminalWrapper{
     position:fixed;
     inset:0;
     padding:40px;
     z-index:2;
 }
+
 #term{
     width:100%;
     height:100%;
-    border:1px solid #00ff9d33;
-    box-shadow:0 0 40px #00ff9d22;
+    background:#000000dd; /* 🔥 fundo mais sólido */
+    border:1px solid #00ff9d55;
+    box-shadow:0 0 40px #00ff9d33;
 }
 
 /* BUTTON AREA */
@@ -98,16 +113,22 @@ canvas{
 #successScreen{
     position:fixed;
     inset:0;
-    background:#060b09;
+    background:#000;
     display:none;
     justify-content:center;
     align-items:center;
     flex-direction:column;
     z-index:20;
     text-align:center;
+    animation: fadeIn 1s;
+}
+@keyframes fadeIn{
+    from{opacity:0;}
+    to{opacity:1;}
 }
 #successScreen h2{
     letter-spacing:4px;
+    font-size:2rem;
 }
 #successScreen button{
     margin-top:20px;
@@ -125,7 +146,7 @@ canvas{
 
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
-    <p>Click to initialize flashing system</p>
+    <p>Click to initialize system</p>
 </div>
 
 <div id="terminalWrapper">
@@ -161,25 +182,25 @@ const canvas = document.getElementById("matrix");
 const ctx = canvas.getContext("2d");
 canvas.height = window.innerHeight;
 canvas.width = window.innerWidth;
-const letters = "01SKLAB404";
-const fontSize = 14;
+const letters = "01";
+const fontSize = 16;
 const columns = canvas.width/fontSize;
 const drops = Array(Math.floor(columns)).fill(1);
 
 function draw(){
-    ctx.fillStyle="rgba(6,11,9,0.1)";
+    ctx.fillStyle="rgba(5,8,7,0.1)";
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle="#00ff9d";
     ctx.font=fontSize+"px monospace";
     for(let i=0;i<drops.length;i++){
         const text=letters[Math.floor(Math.random()*letters.length)];
         ctx.fillText(text,i*fontSize,drops[i]*fontSize);
-        if(drops[i]*fontSize>canvas.height && Math.random()>0.975)
+        if(drops[i]*fontSize>canvas.height && Math.random()>0.98)
             drops[i]=0;
         drops[i]++;
     }
 }
-setInterval(draw,35);
+setInterval(draw,40);
 
 /* TERMINAL */
 const term = new Terminal({
@@ -189,7 +210,7 @@ const term = new Terminal({
         cursor:'#00ff9d'
     },
     fontFamily:'Courier New',
-    fontSize:14,
+    fontSize:15, /* 🔥 maior */
     cursorBlink:true
 });
 
@@ -199,11 +220,16 @@ term.open(document.getElementById('term'));
 fit.fit();
 window.addEventListener('resize',()=>fit.fit());
 
+/* TYPE SOUND */
+const keySound = new Audio("https://actions.google.com/sounds/v1/keyboard/keyboard_click.ogg");
+
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function type(text, delay=25){
+async function type(text, delay=20){
     for(let i=0;i<text.length;i++){
         term.write(text[i]);
+        keySound.currentTime = 0;
+        keySound.play().catch(()=>{});
         await sleep(delay);
     }
     term.write("\r\n");
@@ -220,10 +246,10 @@ function enter(){
 }
 
 async function startSequence(){
-    await type("Initializing SKLAB404 flashing environment...");
-    await sleep(400);
-    await type("System ready.");
-    await sleep(200);
+    await type("Booting SKLAB404 secure flashing environment...");
+    await sleep(300);
+    await type("System integrity: OK");
+    await sleep(300);
     await type("Awaiting device connection...");
     document.getElementById("buttons").style.display="block";
 }
@@ -240,7 +266,7 @@ console.log = function (...args) {
         msg.includes("%") ||
         msg.includes("Erasing")
     ) {
-        term.writeln("> " + msg);
+        term.writeln("\x1b[1;32m> " + msg + "\x1b[0m"); // 🔥 verde forte
     }
 
     if (
