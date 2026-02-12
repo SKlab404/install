@@ -16,7 +16,6 @@ body{
     justify-content:center;
     height:100vh;
 }
-
 button{
     background:transparent;
     border:1px solid #8affc1;
@@ -26,7 +25,6 @@ button{
     cursor:pointer;
     margin-bottom:20px;
 }
-
 #log{
     width:80%;
     max-width:900px;
@@ -40,7 +38,6 @@ button{
 <body>
 
 <button id="connectBtn">CONNECT DEVICE</button>
-
 <div id="log"></div>
 
 <script type="module">
@@ -56,12 +53,18 @@ function log(msg){
 
 document.getElementById("connectBtn").addEventListener("click", async () => {
 
+    let port;
+
     try {
 
         log("esptool.js");
         log("Requesting serial port...");
 
-        const port = await navigator.serial.requestPort();
+        port = await navigator.serial.requestPort();
+
+        log("Opening port...");
+        await port.open({ baudRate: 115200 });
+
         const transport = new Transport(port);
 
         const loader = new ESPLoader({
@@ -76,16 +79,15 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
         log("Resetting into bootloader...");
 
-        // Sequência clássica auto-reset ESP
-        await transport.setDTR(false);
-        await transport.setRTS(true);
+        // Sequência clássica ESP auto-reset
+        await port.setSignals({ dataTerminalReady: false, requestToSend: true });
         await new Promise(r => setTimeout(r, 100));
-        await transport.setDTR(true);
-        await transport.setRTS(false);
+        await port.setSignals({ dataTerminalReady: true, requestToSend: false });
         await new Promise(r => setTimeout(r, 100));
-        await transport.setDTR(false);
+        await port.setSignals({ dataTerminalReady: false, requestToSend: false });
 
         log("Connecting to ESP...");
+
         await loader.main();
 
         log("Connected!");
@@ -95,7 +97,13 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
         log("MAC: " + mac);
 
     } catch (err){
+
         log("Error: " + err);
+
+        if (port) {
+            try { await port.close(); } catch(e){}
+        }
+
         log("If connection fails, try holding BOOT button.");
     }
 
