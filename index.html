@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // PRO MAX</title>
+<title>SKLAB404 // Professional Flasher</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,73 +13,65 @@
 <style>
 body{
     margin:0;
-    background:#0b1110;
+    background:#0c1311;
     font-family:monospace;
     color:#00ff9d;
-    overflow:hidden;
 }
 
-/* SPLASH */
-#splash{
-    position:fixed;
-    inset:0;
-    background:#0b1110;
+header{
+    padding:20px 40px;
+    border-bottom:1px solid #00ff9d22;
     display:flex;
-    justify-content:center;
+    justify-content:space-between;
     align-items:center;
-    flex-direction:column;
-    cursor:pointer;
-    z-index:20;
-    transition:0.4s;
 }
-#splash.fade{opacity:0;pointer-events:none;}
 
-/* LAYOUT */
-#container{display:flex;height:100vh;}
-#steps{
-    width:220px;
-    background:#070c0b;
-    padding:30px;
-    border-right:1px solid #00ff9d22;
+#main{
+    display:flex;
+    padding:40px;
+    gap:40px;
 }
-.step{margin-bottom:25px;opacity:0.4;}
-.step.active{opacity:1;}
 
-#main{flex:1;padding:40px;}
+/* LEFT PANEL */
+#config{
+    width:300px;
+}
 
-.deviceCard{
-    border:1px solid #00ff9d55;
+.card{
+    border:1px solid #00ff9d33;
     padding:20px;
-    cursor:pointer;
-    display:inline-block;
-    margin-right:15px;
-    transition:0.3s;
+    margin-bottom:20px;
 }
-.deviceCard:hover{background:#002e20;}
-.deviceCard.selected{background:#003b2a;}
-.deviceCard.disabled{opacity:0.3;pointer-events:none;}
 
-#status{
-    margin-top:10px;
-    font-size:0.9rem;
-    opacity:0.8;
+select, input{
+    width:100%;
+    background:#001a12;
+    color:#00ff9d;
+    border:1px solid #00ff9d22;
+    padding:6px;
+    margin-top:8px;
+}
+
+/* FLASH AREA */
+#flashArea{
+    flex:1;
 }
 
 #term{
     width:100%;
-    height:38vh;
+    height:350px;
     background:#000000ee;
     border:1px solid #00ff9d55;
-    margin-top:20px;
 }
 
 #progressContainer{
     width:100%;
     height:20px;
     background:#001a12;
-    margin-top:15px;
+    margin-top:10px;
     display:none;
 }
+
 #progressBar{
     height:100%;
     width:0%;
@@ -87,61 +79,45 @@ body{
     transition:width 0.2s;
 }
 
-.actionBtn{
-    margin-top:15px;
-    padding:8px 18px;
-    border:1px solid #00ff9d;
+button{
+    margin-top:10px;
+    padding:8px 15px;
     background:transparent;
+    border:1px solid #00ff9d;
     color:#00ff9d;
     cursor:pointer;
 }
 
-#advanced{
+#status{
     margin-top:10px;
-    border-top:1px solid #00ff9d22;
-    padding-top:10px;
-    display:none;
+    font-size:0.9rem;
+    opacity:0.8;
 }
-
-#success{display:none;margin-top:20px;}
 </style>
 </head>
 <body>
 
-<div id="splash" onclick="enter()">
-<h1>SKLAB404</h1>
-<p>Click to initialize secure flasher</p>
-</div>
-
-<div id="container">
-
-<div id="steps">
-<div class="step active" id="step0">0. Detect Device</div>
-<div class="step" id="step1">1. Select Firmware</div>
-<div class="step" id="step2">2. Flash</div>
-<div class="step" id="step3">3. Done</div>
-</div>
+<header>
+    <h2>SKLAB404 Professional Flasher</h2>
+    <div id="status">Idle</div>
+</header>
 
 <div id="main">
 
-<!-- DETECT -->
-<button class="actionBtn" onclick="detectDevice()">Detect Device</button>
-<div id="status">No device detected</div>
+<!-- CONFIG PANEL -->
+<div id="config">
 
-<!-- DEVICE SELECT -->
-<div id="deviceSelection" style="margin-top:20px; display:none;">
-<div class="deviceCard" data-model="C5" onclick="selectDevice('manifest_c5.json',this)">ESP32-C5</div>
-<div class="deviceCard" data-model="C3" onclick="selectDevice('manifest_c3.json',this)">ESP32-C3</div>
-<div class="deviceCard" data-model="S3" onclick="selectDevice('manifest_s3.json',this)">ESP32-S3</div>
+<div class="card">
+<label>Device Firmware</label>
+<select id="firmwareSelect">
+<option value="manifest_c5.json">ESP32-C5</option>
+<option value="manifest_c3.json">ESP32-C3</option>
+<option value="manifest_s3.json">ESP32-S3</option>
+</select>
 </div>
 
-<!-- FLASH -->
-<div id="flashSection" style="display:none;">
-
-<button class="actionBtn" onclick="toggleAdvanced()">Advanced</button>
-
-<div id="advanced">
-<label>Baud:</label>
+<div class="card">
+<label>Baud Rate</label>
 <select id="baudSelect">
 <option value="115200">115200</option>
 <option value="460800">460800</option>
@@ -149,11 +125,18 @@ body{
 </select>
 </div>
 
+<div class="card">
+<button onclick="forceReset()">Force Reset</button>
+</div>
+
+</div>
+
+<!-- FLASH AREA -->
+<div id="flashArea">
+
 <div id="flashContainer">
 <esp-web-install-button id="flashBtn"></esp-web-install-button>
 </div>
-
-<button class="actionBtn" onclick="forceReset()">Force Reset Flash</button>
 
 <div id="progressContainer">
 <div id="progressBar"></div>
@@ -163,17 +146,10 @@ body{
 
 </div>
 
-<div id="success">
-<h2>FLASH COMPLETE</h2>
-<button class="actionBtn" onclick="location.reload()">Flash Another</button>
-</div>
-
-</div>
 </div>
 
 <script>
 
-let detectedModel = null;
 let lastActivity = Date.now();
 let watchdog = null;
 
@@ -188,57 +164,43 @@ term.loadAddon(fit);
 term.open(document.getElementById('term'));
 fit.fit();
 
-/* INTRO */
-function enter(){
-const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
-intro.volume = 0.4;
-intro.play().catch(()=>{});
-document.getElementById("splash").classList.add("fade");
-}
+/* APPLY FIRMWARE SELECTION */
+document.getElementById("firmwareSelect").addEventListener("change", e=>{
+document.getElementById("flashBtn").setAttribute("manifest", e.target.value);
+});
 
-/* DETECT */
-function detectDevice(){
-term.writeln("Requesting device...");
-document.getElementById("step0").classList.add("active");
-}
-
-/* SELECT DEVICE */
-function selectDevice(manifest, el){
-document.querySelectorAll(".deviceCard").forEach(e=>e.classList.remove("selected"));
-el.classList.add("selected");
-
-localStorage.setItem("lastModel", el.dataset.model);
-
-const btn = document.getElementById("flashBtn");
-btn.setAttribute("manifest", manifest);
-
-document.getElementById("flashSection").style.display="block";
-document.getElementById("step1").classList.add("active");
-document.getElementById("step2").classList.add("active");
-
-setupWatchdog();
-}
+/* INIT DEFAULT */
+document.getElementById("flashBtn").setAttribute(
+"manifest",
+document.getElementById("firmwareSelect").value
+);
 
 /* WATCHDOG */
-function setupWatchdog(){
+function startWatchdog(){
 clearInterval(watchdog);
 watchdog = setInterval(()=>{
-if(Date.now() - lastActivity > 15000){
-term.writeln("\n⚠ Flash appears stalled. Resetting...");
+if(Date.now() - lastActivity > 20000){
+term.writeln("\n⚠ Flash stalled. Resetting...");
 forceReset();
 }
 },5000);
 }
 
+function stopWatchdog(){
+clearInterval(watchdog);
+}
+
 /* FORCE RESET */
 function forceReset(){
-clearInterval(watchdog);
+stopWatchdog();
 const container = document.getElementById("flashContainer");
 const old = document.getElementById("flashBtn");
 const clone = old.cloneNode(true);
 container.innerHTML="";
 container.appendChild(clone);
 document.getElementById("progressBar").style.width="0%";
+document.getElementById("progressContainer").style.display="none";
+document.getElementById("status").innerText="Reset complete";
 }
 
 /* LOG CAPTURE */
@@ -250,23 +212,28 @@ const msg = args.join(" ");
 lastActivity = Date.now();
 
 if(msg.includes("ESP32")){
-term.writeln("[DETECTED] " + msg);
+term.writeln("[DEVICE] " + msg);
 document.getElementById("status").innerText = msg;
 }
 
-if(msg.includes("%")){
+if(msg.includes("Writing") || msg.includes("%")){
+term.writeln("> " + msg);
+
 const match = msg.match(/(\d+)%/);
 if(match){
 document.getElementById("progressContainer").style.display="block";
 document.getElementById("progressBar").style.width = match[1] + "%";
 }
-term.writeln("> " + msg);
+}
+
+if(msg.includes("Connecting")){
+document.getElementById("status").innerText="Connecting...";
+startWatchdog();
 }
 
 if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
-clearInterval(watchdog);
-document.getElementById("step3").classList.add("active");
-document.getElementById("success").style.display="block";
+stopWatchdog();
+document.getElementById("status").innerText="Flash complete";
 }
 
 originalConsoleLog.apply(console,args);
