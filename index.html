@@ -56,40 +56,51 @@ function log(msg){
 
 document.getElementById("connectBtn").addEventListener("click", async () => {
 
+    let port;
+
     try {
 
         log("Requesting serial port...");
 
-        const port = await navigator.serial.requestPort();
+        port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
 
         log("Port opened.");
 
         const transport = new Transport(port);
+
         const loader = new ESPLoader({
             transport,
             baudrate: 115200,
             terminal: {
-                write: (data) => log(data)
+                write: (data) => log(data),
+                clean: () => {}   // 🔥 Corrige erro
             }
         });
 
         log("Connecting to ESP...");
 
-        const chip = await loader.main();
+        await loader.main();
 
         log("Connected.");
         log("Chip detected: " + loader.chipName);
 
-        log("MAC: " + loader.macAddr());
+        const mac = await loader.readMac();
+        log("MAC: " + mac);
 
     } catch (err){
         log("Error: " + err);
+
+        if (port) {
+            try { await port.close(); } catch(e){}
+        }
     }
 
 });
 
 </script>
 
+
 </body>
 </html>
+
