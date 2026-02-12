@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>SKLAB404 V53 - AUTO INTRO</title>
+    <title>SKLAB404 - SPLASH</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -10,72 +10,81 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #0f0; font-family: monospace; height: 100vh; overflow: hidden; }
+
+        /* SPLASH SCREEN */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+            text-align: center; cursor: pointer;
+        }
+        #splash h1 { font-size: 3em; margin-bottom: 20px; text-shadow: 0 0 20px #0f0; }
+        #splash p { font-size: 1.2em; opacity: 0.8; }
+
+        /* MAIN APP (escondida inicialmente) */
+        #app { display: none; height: 100vh; flex-direction: column; }
         #controls { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; }
-        esp-web-install-button button { background: #004400 !important; color: #fff !important; border: 2px solid #0f0 !important; padding: 15px 30px !important; font-weight: bold !important; cursor: pointer !important; font-family: monospace !important; }
+        esp-web-install-button button { 
+            background: #004400 !important; color: #fff !important; 
+            border: 2px solid #0f0 !important; padding: 15px 30px !important;
+            font-weight: bold !important; cursor: pointer !important; font-family: monospace !important;
+        }
+        esp-web-install-button { --esp-tools-card-background-color: transparent !important; }
         esp-web-install-button button:hover { background: #006600 !important; box-shadow: 0 0 15px #0f0 !important; }
-        esp-web-install-button { --esp-tools-card-background-color: transparent !important; --esp-tools-card-border-color: transparent !important; }
         #term { flex: 1; padding: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="controls">
-        <esp-web-install-button manifest="manifest_c5.json">
-            <button slot="activate">C5</button>
-        </esp-web-install-button>
-        <esp-web-install-button manifest="manifest_std.json">
-            <button slot="activate">STD</button>
-        </esp-web-install-button>
-        <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate" style="border-color:#f55 !important;">BRUCE</button>
-        </esp-web-install-button>
+    <!-- SPLASH SCREEN (tocas para entrar) -->
+    <div id="splash" onclick="enterApp()">
+        <h1>SKLAB404</h1>
+        <p>Click para entrar + intro.mp3</p>
     </div>
 
-    <div id="term"></div>
+    <!-- APP PRINCIPAL (aparece depois do clique) -->
+    <div id="app">
+        <div id="controls">
+            <esp-web-install-button manifest="manifest_c5.json">
+                <button slot="activate">C5</button>
+            </esp-web-install-button>
+            <esp-web-install-button manifest="manifest_std.json">
+                <button slot="activate">STD</button>
+            </esp-web-install-button>
+            <esp-web-install-button manifest="manifest_bruce.json">
+                <button slot="activate" style="border-color:#f55 !important;">BRUCE</button>
+            </esp-web-install-button>
+        </div>
+        <div id="term"></div>
+    </div>
 
     <script>
+        let introPlayed = false;
+
+        function enterApp() {
+            // ESCONDE SPLASH
+            document.getElementById('splash').style.display = 'none';
+            
+            // MOSTRA APP
+            document.getElementById('app').style.display = 'flex';
+            
+            // TOCA INTRO.MP3 (agora desbloqueado pelo teu clique)
+            if (!introPlayed) {
+                const intro = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
+                intro.volume = 0.6;
+                intro.play();
+                introPlayed = true;
+            }
+        }
+
+        // TERMINAL (só ativa após entrar)
         const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
-
-        term.writeln('V53 - INTRO AUTO');
-        term.writeln('> Tentando intro.mp3...\n');
-
-        // TRUQUE 1: Preload + play imediato
-        const intro1 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
-        intro1.preload = 'auto';
-        intro1.volume = 0.5;
-        intro1.play();
-
-        // TRUQUE 2: Múltiplas tentativas
-        setTimeout(() => {
-            const intro2 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
-            intro2.volume = 0.5;
-            intro2.play().then(() => term.writeln('✓ Intro1')).catch(() => term.writeln('> Intro1 blocked'));
-        }, 100);
-
-        setTimeout(() => {
-            const intro3 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
-            intro3.volume = 0.5;
-            intro3.play().then(() => term.writeln('✓ Intro2')).catch(() => {});
-        }, 300);
-
-        // TRUQUE 3: Web Audio bypass (mais potente)
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        fetch("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3")
-            .then(r => r.arrayBuffer())
-            .then(ArrayBuffer => audioCtx.decodeAudioData(ArrayBuffer))
-            .then(decodedData => {
-                const source = audioCtx.createBufferSource();
-                source.buffer = decodedData;
-                source.connect(audioCtx.destination);
-                source.start();
-                term.writeln('\x1b[1;32m✓ WebAudio intro!\x1b[0m');
-            })
-            .catch(() => term.writeln('> WebAudio fail'));
 
         // LOGS + SUCESSO
         console.log = (...args) => {
