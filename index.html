@@ -74,7 +74,10 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
             baudrate: 115200,
             terminal: {
                 write: (data) => log(data),
-                clean: () => {}   // 🔥 Corrige erro
+                writeLine: (data) => log(data),
+                clean: () => {
+                    logDiv.innerHTML = "";
+                }
             }
         });
 
@@ -103,4 +106,5 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
 </body>
 </html>
+
 
