@@ -161,9 +161,18 @@ async function type(text, delay=25){
 
 /* INTRO */
 function enter(){
+
+    // Criar áudio dentro do clique (gesto válido)
+    const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
+    intro.volume = 0.5;
+
+    intro.play().catch(err => {
+        console.log("Audio blocked:", err);
+    });
+
     document.getElementById("splash").classList.add("fade");
 
-    setTimeout(startSequence,500);
+    setTimeout(startSequence, 500);
 }
 
 async function startSequence(){
@@ -223,3 +232,4 @@ console.log = function (...args) {
 
 </body>
 </html>
+
