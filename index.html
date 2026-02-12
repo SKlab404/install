@@ -45,6 +45,25 @@ body{
     height:100vh;
     padding:20px;
 }
+
+/* AUTHORIZE BUTTON */
+#authorizeBtn{
+    position:fixed;
+    bottom:40px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#002200;
+    color:#00ff00;
+    border:2px solid #00ff00;
+    padding:15px 40px;
+    font-family:monospace;
+    font-size:16px;
+    cursor:pointer;
+    display:none;
+}
+#authorizeBtn:hover{
+    background:#003300;
+}
 </style>
 </head>
 <body>
@@ -57,10 +76,10 @@ body{
 
 <div id="term"></div>
 
-<!-- BOTÕES INVISÍVEIS -->
-<esp-web-install-button id="c5" manifest="manifest_c5.json" style="display:none"></esp-web-install-button>
-<esp-web-install-button id="std" manifest="manifest_std.json" style="display:none"></esp-web-install-button>
-<esp-web-install-button id="bruce" manifest="manifest_bruce.json" style="display:none"></esp-web-install-button>
+<button id="authorizeBtn">AUTHORIZE FLASH</button>
+
+<!-- BOTÃO REAL (VISÍVEL MAS ESCONDIDO VISUALMENTE) -->
+<esp-web-install-button id="realInstall" manifest="manifest_c5.json" style="position:absolute;opacity:0;pointer-events:none;"></esp-web-install-button>
 
 <script>
 
@@ -102,47 +121,46 @@ async function startSequence(){
 
     term.writeln("\x1b[1;32mSKLAB404 Secure Access Terminal\x1b[0m");
     term.writeln("");
-    await sleep(500);
 
+    await sleep(500);
     await type("> Initializing secure environment...");
     await sleep(800);
-
     await type("> Scanning USB ports...");
     await sleep(1000);
-
     await type("> Device detected: ESP32");
     await sleep(700);
-
     await type("> Bypassing bootloader security...");
     await sleep(1200);
-
     await type("> Injecting payload...");
-    await sleep(1000);
+    await sleep(800);
 
-    term.writeln("\x1b[1;33m> Awaiting user authorization...\x1b[0m");
+    term.writeln("");
+    term.writeln("\x1b[1;33m> Awaiting authorization...\x1b[0m");
 
-    // DISPARA INSTALL REAL
-    document.getElementById("c5").shadowRoot
-        .querySelector("button")
-        .click();
+    document.getElementById("authorizeBtn").style.display="block";
 }
 
-// Captura logs do esp
-document.querySelectorAll("esp-web-install-button").forEach(btn=>{
-    btn.addEventListener("state-change",(e)=>{
-        if(e.detail.state==="INSTALLING"){
-            term.writeln("> Flashing firmware...");
-        }
-        else if(e.detail.state==="SUCCESS"){
-            term.writeln("\x1b[1;32m✓ Injection complete\x1b[0m");
-        }
-        else if(e.detail.state==="ERROR"){
-            term.writeln("\x1b[1;31m✗ "+e.detail.error+"\x1b[0m");
-        }
-    });
+startSequence();
+
+/* CLICK REAL = GESTO DO UTILIZADOR */
+document.getElementById("authorizeBtn").addEventListener("click", () => {
+    term.writeln("\n> Authorization granted.");
+    term.writeln("> Opening secure channel...");
+    document.getElementById("realInstall").click();
 });
 
-startSequence();
+/* Logs do esp */
+document.getElementById("realInstall").addEventListener("state-change",(e)=>{
+    if(e.detail.state==="INSTALLING"){
+        term.writeln("> Flashing firmware...");
+    }
+    else if(e.detail.state==="SUCCESS"){
+        term.writeln("\x1b[1;32m✓ Injection complete\x1b[0m");
+    }
+    else if(e.detail.state==="ERROR"){
+        term.writeln("\x1b[1;31m✗ "+e.detail.error+"\x1b[0m");
+    }
+});
 
 </script>
 </body>
