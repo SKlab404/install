@@ -29,8 +29,8 @@ button{
 
 #log{
     width:80%;
-    max-width:800px;
-    height:300px;
+    max-width:900px;
+    height:350px;
     border:1px solid #8affc1;
     padding:10px;
     overflow:auto;
@@ -58,10 +58,10 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
     try {
 
+        log("esptool.js");
         log("Requesting serial port...");
 
         const port = await navigator.serial.requestPort();
-
         const transport = new Transport(port);
 
         const loader = new ESPLoader({
@@ -74,11 +74,21 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
             }
         });
 
-        log("Connecting to ESP...");
+        log("Resetting into bootloader...");
 
+        // Sequência clássica auto-reset ESP
+        await transport.setDTR(false);
+        await transport.setRTS(true);
+        await new Promise(r => setTimeout(r, 100));
+        await transport.setDTR(true);
+        await transport.setRTS(false);
+        await new Promise(r => setTimeout(r, 100));
+        await transport.setDTR(false);
+
+        log("Connecting to ESP...");
         await loader.main();
 
-        log("Connected.");
+        log("Connected!");
         log("Chip detected: " + loader.chipName);
 
         const mac = await loader.readMac();
@@ -86,16 +96,12 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
     } catch (err){
         log("Error: " + err);
+        log("If connection fails, try holding BOOT button.");
     }
 
 });
 
 </script>
 
-
-
 </body>
 </html>
-
-
-
