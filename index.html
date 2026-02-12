@@ -32,10 +32,6 @@ body{
     z-index:10;
     transition:0.5s;
 }
-#splash h1{
-    font-size:2.8rem;
-    letter-spacing:5px;
-}
 #splash.fade{
     opacity:0;
     pointer-events:none;
@@ -73,10 +69,6 @@ body{
     letter-spacing:2px;
     cursor:pointer !important;
     margin:5px;
-    transition:0.3s;
-}
-.cleanBtn:hover{
-    background:#003b2a !important;
 }
 
 /* SUCCESS */
@@ -150,6 +142,7 @@ const term = new Terminal({
     fontSize:15,
     cursorBlink:true
 });
+
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
 term.open(document.getElementById('term'));
@@ -170,53 +163,61 @@ async function type(text, delay=25){
 function enter(){
     document.getElementById("splash").classList.add("fade");
 
-    const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
-    intro.volume = 0.4;
-    intro.play().catch(()=>{});
-
     setTimeout(startSequence,500);
 }
 
 async function startSequence(){
     await type("Initializing secure flashing environment...");
     await sleep(300);
-    await type("Checking firmware integrity...");
-    await sleep(300);
     await type("System ready.");
     await sleep(300);
-    await type("Select device firmware to begin.");
+    await type("Select firmware to begin.");
     document.getElementById("buttons").style.display="block";
 }
 
-/* PROGRESS VIA STATE-CHANGE */
-document.querySelectorAll("esp-web-install-button")
-.forEach(btn => {
+/* ===== REAL LOG CAPTURE ===== */
 
-    btn.addEventListener("state-change", (e) => {
+const originalConsoleLog = console.log;
 
-        if (e.detail.state === "INSTALLING") {
-            term.writeln("\n> Flashing started...");
-        }
+console.log = function (...args) {
 
-        if (typeof e.detail.progress === "number") {
-            const percent = Math.round(e.detail.progress * 100);
-            term.writeln(`\x1b[1;32m[ ${percent}% ]\x1b[0m`);
-        }
+    const msg = args.join(" ");
 
-        if (e.detail.state === "SUCCESS") {
-            term.writeln("\n✓ FLASH SUCCESSFUL");
-            setTimeout(()=>{
-                document.getElementById("successScreen").style.display="flex";
-            },600);
-        }
+    // Mostrar modelo
+    if (msg.includes("ESP32-C5")) {
+        term.writeln("\n[DEVICE] ESP32-C5 detected");
+    }
 
-        if (e.detail.state === "ERROR") {
-            term.writeln("\n✗ ERROR: " + e.detail.error);
-        }
+    if (msg.includes("ESP32-C3")) {
+        term.writeln("\n[DEVICE] ESP32-C3 detected");
+    }
 
-    });
+    if (msg.includes("ESP32-S3")) {
+        term.writeln("\n[DEVICE] ESP32-S3 detected");
+    }
 
-});
+    // Mostrar progresso real
+    if (
+        msg.includes("Writing") ||
+        msg.includes("%") ||
+        msg.includes("Erasing")
+    ) {
+        term.writeln("> " + msg);
+    }
+
+    // Final do flash
+    if (
+        msg.includes("Hash of data verified") ||
+        msg.includes("Leaving...")
+    ) {
+        term.writeln("\n✓ FLASH SUCCESSFUL");
+        setTimeout(()=>{
+            document.getElementById("successScreen").style.display="flex";
+        },800);
+    }
+
+    originalConsoleLog.apply(console, args);
+};
 
 </script>
 
