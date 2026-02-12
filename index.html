@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>SKLAB404 INSTALLER V46</title>
+    <title>SKLAB404 V47</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -10,183 +10,112 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #header { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; font-family: monospace; }
+        #controls { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; }
         
-        /* ESconder a caixa branca COMPLETAMENTE */
+        /* Botões dark - SEM caixa branca */
         esp-web-install-button {
-            --esp-tools-button-color: transparent !important;
-            --esp-tools-button-background-color: transparent !important;
-            --esp-tools-button-text-color: #00ff41 !important;
-            --esp-tools-button-border-color: #00ff41 !important;
-            --esp-tools-button-hover-color: #00aa00 !important;
             --esp-tools-card-background-color: transparent !important;
             --esp-tools-card-border-color: transparent !important;
             --esp-tools-card-shadow: none !important;
-            --esp-tools-progress-background-color: rgba(0,255,65,0.2) !important;
-            --esp-tools-progress-color: #00ff41 !important;
         }
-
-        /* OS TEUS BOTÕES custom */
         esp-web-install-button button {
-            background: linear-gradient(45deg, #004400, #00aa00) !important; 
-            color: #fff !important; 
-            border: 3px solid #00ff41 !important; 
-            padding: 18px 35px !important;
-            font-size: 1.1em; font-weight: 900 !important; 
-            cursor: pointer !important;
-            font-family: 'Orbitron', monospace !important; 
-            text-transform: uppercase !important;
-            border-radius: 12px !important;
-            box-shadow: 0 0 25px rgba(0,255,65,0.6) !important;
-            transition: all 0.4s ease !important;
-            position: relative !important;
-            z-index: 10 !important;
-            min-width: 160px;
+            background: #004400 !important; color: #fff !important; 
+            border: 2px solid #0f0 !important; padding: 15px 30px !important;
+            font-weight: bold !important; cursor: pointer !important;
+            font-family: monospace !important; text-transform: uppercase !important;
         }
-        
-        esp-web-install-button button:hover { 
-            background: linear-gradient(45deg, #00aa00, #00ff41) !important;
-            box-shadow: 0 0 40px #00ff41 !important;
-            transform: scale(1.05) !important;
-        }
+        esp-web-install-button button:hover { background: #006600 !important; box-shadow: 0 0 15px #0f0 !important; }
 
-        /* Layout principal */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: #000; 
-            color: #00ff41; 
-            font-family: 'Orbitron', monospace; 
-            display: flex; flex-direction: column; 
-            height: 100vh;
-        }
-
-        #header { 
-            padding: 25px; 
-            text-align: center; 
-            background: linear-gradient(90deg, #001100, #002200);
-            border-bottom: 3px solid #00ff41;
-            box-shadow: 0 0 30px rgba(0,255,65,0.4);
-        }
-        
-        h1 { font-size: 2.2em; margin: 0; letter-spacing: 4px; text-shadow: 0 0 20px #00ff41; }
-
-        #controls { 
-            padding: 35px; 
-            text-align: center; 
-            background: rgba(0,10,0,0.95);
-            backdrop-filter: blur(15px);
-            border-bottom: 2px solid #003300;
-        }
-        
-        esp-web-install-button { margin: 0 15px; display: inline-block; }
-
-        #term { 
-            flex: 1; padding: 25px; 
-            background: rgba(0,0,0,0.97);
-            border-top: 2px solid #00ff41;
-        }
+        #term { flex: 1; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <h1>SKLAB404 INSTALLER</h1>
-        <div style="font-size: 0.85em; opacity: 0.8; margin-top: 5px;">V46 - DARK MODE ACTIVATED</div>
+        <h2>SKLAB404 INSTALLER V47</h2>
+        <div style="font-size: 0.9em; opacity: 0.8;">Click para ativar áudio</div>
     </div>
 
     <div id="controls">
         <esp-web-install-button manifest="manifest_c5.json">
-            <button slot="activate">🧠 C5</button>
+            <button slot="activate">C5</button>
         </esp-web-install-button>
 
         <esp-web-install-button manifest="manifest_std.json">
-            <button slot="activate">⚡ STD</button>
+            <button slot="activate">STD</button>
         </esp-web-install-button>
 
         <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate">🔥 BRUCE</button>
+            <button slot="activate" style="border-color:#f55 !important;">BRUCE</button>
         </esp-web-install-button>
     </div>
 
     <div id="term"></div>
 
     <script>
-        // FIX ÁUDIO: Usar CDN + autoplay policy
-        function playIntro() {
-            fetch('https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3')
-                .then(r => r.blob())
-                .then(blob => {
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    audio.volume = 0.6;
-                    audio.play().catch(e => {
-                        console.log('🎵 Click num botão para ativar áudio');
-                    });
-                })
-                .catch(() => {
-                    // Fallback: beep sintetizado
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
-                    oscillator.frequency.value = 800;
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 1);
-                });
-        }
-
-        // Tocar áudio ao primeiro clique (respeita policy do browser)
-        document.body.addEventListener('click', playIntro, { once: true });
-
-        // TERMINAL
-        const term = new Terminal({ 
-            theme: { background: 'rgba(0,0,0,0.92)', foreground: '#00ff41', cursor: '#00ff41' }, 
-            cursorBlink: true,
-            fontFamily: 'Orbitron, monospace',
-            fontSize: 14
-        });
+        // TERMINAL PRIMEIRO (garante que funciona)
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('\n\x1b[1;32m[SYSTEM] V46 DARK MODE - ONLINE\x1b[0m');
-        term.writeln('\x1b[1;33m[READY] Click num target | Áudio ao primeiro clique\x1b[0m\n');
+        term.writeln('=== SKLAB404 V47 ===');
+        term.writeln('> Sistema pronto');
+        term.writeln('> Click num botão para começar\n');
 
-        // LOGS
+        // ÁUDIO SIMPLES (ativa com clique)
+        document.body.addEventListener('click', function playIntro() {
+            fetch('https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3')
+                .then(r => r.blob())
+                .then(blob => {
+                    const audio = new Audio(URL.createObjectURL(blob));
+                    audio.volume = 0.5;
+                    audio.play();
+                    term.writeln('\x1b[1;33m> Áudio ativado\x1b[0m');
+                }).catch(() => {
+                    // Beep de fallback
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    osc.frequency.value = 600;
+                    osc.connect(ctx.destination);
+                    osc.start(); osc.stop(ctx.currentTime + 0.5);
+                    term.writeln('\x1b[1;33m> Beep de boot\x1b[0m');
+                });
+            document.body.removeEventListener('click', playIntro);
+        }, { once: true });
+
+        // LOGS SIMPLES
         const originalLog = console.log;
-        console.log = function(...args) {
+        console.log = (...args) => {
             originalLog(...args);
             const msg = args.join(' ');
             if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
-                term.writeln(`\x1b[1;36m> ${msg}\x1b[0m`);
+                term.writeln(`> ${msg}`);
             }
         };
 
-        // EVENTOS (SUCESSO SEMPRE VISÍVEL)
-        document.querySelectorAll('esp-web-install-button').forEach(button => {
-            button.addEventListener('state-change', (e) => {
-                const targetName = button.querySelector('button').textContent.trim();
+        // EVENTOS SIMPLES (SUCESSO SEMPRE)
+        document.querySelectorAll('esp-web-install-button').forEach(b => {
+            b.addEventListener('state-change', (e) => {
+                const btnText = b.querySelector('button').textContent;
                 
                 if (e.detail.state === 'INSTALLING') {
-                    term.writeln(`\n\x1b[1;35m>>> ${targetName.toUpperCase()}\x1b[0m`);
+                    term.writeln(`\n>>> ${btnText}...`);
                 }
                 else if (e.detail.state === 'SUCCESS') {
-                    term.writeln(`\n\x1b[1;32m✓ ${targetName.toUpperCase()} ✓ SUCESSO!\x1b[0m`);
-                    term.writeln('\x1b[0;33m> Reinicia dispositivo para testar.\x1b[0m\n');
+                    term.writeln('\n\x1b[1;32m✓ SUCESSO! Instalação completa.\x1b[0m');
                 }
                 else if (e.detail.state === 'ERROR') {
-                    if (e.detail.error?.includes('Improv') || e.detail.error?.includes('initialization failed')) {
-                        term.writeln(`\n\x1b[1;32m✓ ${targetName.toUpperCase()} ✓ INSTALADO (Wi-Fi skip)\x1b[0m\n');
-                    } else if (e.detail.error?.includes('already open')) {
-                        term.writeln(`\n\x1b[1;33m⚠ ${targetName} - Porta ocupada\x1b[0m`);
-                        term.writeln('> Desconecta → Espera → Reconecta\n');
+                    if (e.detail.error && (e.detail.error.includes('Improv') || e.detail.error.includes('initialization'))) {
+                        term.writeln('\n\x1b[1;32m✓ SUCESSO! (Wi-Fi erro ignorado)\x1b[0m');
+                    } else if (e.detail.error && e.detail.error.includes('already open')) {
+                        term.writeln('\n\x1b[1;33m⚠ Porta ocupada - Desconecta cabo\x1b[0m');
                     } else {
-                        term.writeln(`\n\x1b[1;31m✗ ${targetName} FALHOU\x1b[0m`);
-                        term.writeln(`\x1b[0;37m> ${e.detail.error}\x1b[0m\n`);
+                        term.writeln(`\n\x1b[1;31m✗ ERRO: ${e.detail.error}\x1b[0m`);
                     }
                 }
             });
