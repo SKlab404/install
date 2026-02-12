@@ -2,7 +2,10 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V35 (CUSTOM UI)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- FORÇAR DARK MODE NATIVO -->
+    <meta name="color-scheme" content="dark">
+    <title>MARAUDER V36 (SKIN HACK)</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -10,6 +13,12 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
+        /* TEMA GLOBAL */
+        :root {
+            --esp-tools-button-color: #00ff00; /* Verde Hacker */
+            --esp-tools-button-text-color: #000000;
+        }
+
         body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
         
         #header { 
@@ -17,7 +26,7 @@
             display: flex; justify-content: center; gap: 20px;
         }
         
-        /* Estilo dos Botões */
+        /* Estilo dos Botões Principais */
         esp-web-install-button button {
             padding: 15px 30px !important; 
             background: #002200 !important; 
@@ -34,10 +43,7 @@
             box-shadow: 0 0 15px #0f0;
         }
 
-        #term-container { 
-            flex: 1; padding: 20px; background: #000; 
-            border-top: 1px solid #111;
-        }
+        #term-container { flex: 1; padding: 20px; background: #000; border-top: 1px solid #111; }
     </style>
 </head>
 <body>
@@ -60,51 +66,63 @@
 
     <script>
         // 1. TERMINAL
-        const term = new Terminal({ 
-            theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, 
-            cursorBlink: true, fontSize: 14, fontFamily: 'Courier New' 
-        });
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, cursorBlink: true, fontSize: 14, fontFamily: 'Courier New' });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term-container'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER SYSTEM READY ===');
-        term.writeln('> Aguardando comando...');
+        term.writeln('=== MARAUDER V36 (INJECTOR MODE) ===');
+        term.writeln('> Sistema de injeção visual pronto.');
 
-        // 2. INTERCETAR LOGS (O TEU PEDIDO)
+        // 2. LOGS NO TERMINAL
         const originalLog = console.log;
         console.log = function(...args) {
-            originalLog(...args); // Mantém funcionalidade original
-            
+            originalLog(...args);
             const msg = args.join(' ');
-            
-            // Filtros para mostrar apenas o interessante
             if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
                 term.writeln(`> ${msg}`);
             }
         };
 
-        // 3. DETETAR FIM DA INSTALAÇÃO (O TEU PEDIDO)
-        // O componente dispara eventos quando o estado muda
-        const buttons = document.querySelectorAll('esp-web-install-button');
-        
-        buttons.forEach(btn => {
+        // 3. O ESPIÃO (MUTATION OBSERVER)
+        // Este código fica a vigiar o HTML. Assim que a janela da Espressif aparece, injeta CSS nela.
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    // Procura pelo componente do diálogo (o nome costuma ser ewt-install-dialog ou similar)
+                    if (node.tagName && node.tagName.toLowerCase().includes('dialog')) {
+                        hackTheStyle(node);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        function hackTheStyle(element) {
+            // Tenta aceder ao Shadow DOM
+            if (element.shadowRoot) {
+                term.writeln('> ALVO DETETADO! Injetando CSS...');
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    /* FORÇAR TEMA HACKER DENTRO DA CAIXA */
+                    :host { --mdc-theme-surface: #111; --mdc-theme-on-surface: #0f0; }
+                    div, span, p, h1, h2 { color: #0f0 !important; font-family: monospace !important; }
+                    button { border: 1px solid #0f0 !important; color: #0f0 !important; background: #002200 !important; }
+                    .mdc-dialog__surface { background-color: #050505 !important; border: 1px solid #0f0 !important; }
+                `;
+                element.shadowRoot.appendChild(style);
+            }
+        }
+
+        // 4. DETEÇÃO DE ESTADO
+        document.querySelectorAll('esp-web-install-button').forEach(btn => {
             btn.addEventListener('state-change', (ev) => {
-                // Estados: 'INSTALLING', 'SUCCESS', 'ERROR'
-                if (ev.detail.state === 'INSTALLING') {
-                    term.writeln('\n>>> INICIANDO PROCESSO DE FLASH...');
-                }
-                else if (ev.detail.state === 'SUCCESS') {
-                    term.writeln('\n========================================');
-                    term.writeln('   ✅ INSTALAÇÃO COMPLETA! SUCESSO.   ');
-                    term.writeln('========================================');
-                    term.writeln('> Podes desligar ou reiniciar o dispositivo.');
-                }
-                else if (ev.detail.state === 'ERROR') {
-                    term.writeln('\n>>> ❌ ERRO NA INSTALAÇÃO.');
-                    term.writeln(`> Detalhes: ${ev.detail.error || 'Desconhecido'}`);
+                if (ev.detail.state === 'SUCCESS') {
+                    term.writeln('\n✅ SUCESSO! Instalação concluída.');
                 }
             });
         });
