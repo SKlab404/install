@@ -3,37 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MARAUDER V37 (INVERTED)</title>
+    <title>MARAUDER BASE V38</title>
     
+    <!-- 1. COMPONENTE OFICIAL (MOTOR) -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+
+    <!-- 2. TERMINAL (MONITOR) -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
+        /* BASE VISUAL SIMPLES */
+        body { margin: 0; background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
         
-        #header { padding: 20px; background: #050505; border-bottom: 2px solid #003300; text-align: center; }
-        
-        /* Estilo dos Botões Iniciais */
+        #controls { 
+            padding: 20px; background: #111; border-bottom: 1px solid #333; 
+            display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
+        }
+
+        /* Botões Personalizados (Para substituir o estilo padrão) */
         esp-web-install-button button {
-            padding: 15px 30px !important; 
-            background: #002200 !important; color: #0f0 !important; border: 1px solid #0f0 !important; 
+            background: #003300 !important; color: white !important; 
+            border: 1px solid #0f0 !important; padding: 10px 20px !important;
             font-family: monospace !important; font-weight: bold !important; cursor: pointer !important;
         }
+        esp-web-install-button button:hover { background: #005500 !important; }
 
-        #term-container { flex: 1; padding: 20px; background: #000; border-top: 1px solid #111; }
-
-        /* O HACK DO INVERT: Aplica-se à caixa de diálogo quando ela aparece */
-        ewt-install-dialog {
-            filter: invert(0.92) hue-rotate(180deg) !important;
-            background-color: #fff !important; /* Invertido fica preto */
-        }
+        #terminal-box { flex: 1; padding: 10px; position: relative; }
     </style>
 </head>
 <body>
 
-    <div id="header">
+    <div id="controls">
         <esp-web-install-button manifest="manifest_c5.json">
             <button slot="activate">FLASH C5</button>
         </esp-web-install-button>
@@ -43,42 +45,46 @@
         </esp-web-install-button>
 
         <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate" style="border-color:#f00 !important; color:#f00 !important;">FLASH BRUCE</button>
+            <button slot="activate" style="border-color:red !important;">FLASH BRUCE</button>
         </esp-web-install-button>
     </div>
 
-    <div id="term-container"></div>
+    <div id="terminal-box"></div>
 
     <script>
-        // TERMINAL
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, cursorBlink: true, fontSize: 14 });
+        // 1. INICIAR TERMINAL
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
-        term.open(document.getElementById('term-container'));
+        term.open(document.getElementById('terminal-box'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V37 (DARK MODE FORÇADO) ===');
-        term.writeln('> O popup vai aparecer com cores invertidas.');
+        term.writeln('=== MARAUDER FLASHER BASE (V38) ===');
+        term.writeln('> Pronto. Clica num botão acima.');
 
-        // LOGS
+        // 2. CAPTURAR LOGS PARA O TERMINAL
         const originalLog = console.log;
         console.log = function(...args) {
-            originalLog(...args);
-            const msg = args.join(' ');
+            originalLog(...args); // Deixa o browser ver também
+            
+            // Converte tudo para texto e envia para o terminal
+            const msg = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : arg).join(' ');
+            
+            // Filtra só o que interessa (limpeza visual)
             if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
-                term.writeln(`> ${msg}`);
+                term.writeln(msg);
             }
         };
 
-        // EVENTOS DE ESTADO
-        document.querySelectorAll('esp-web-install-button').forEach(btn => {
-            btn.addEventListener('state-change', (ev) => {
-                if (ev.detail.state === 'SUCCESS') term.writeln('\n✅ INSTALAÇÃO COMPLETA!');
-                if (ev.detail.state === 'ERROR') term.writeln('\n❌ ERRO.');
+        // 3. DETETAR SUCESSO
+        document.querySelectorAll('esp-web-install-button').forEach(b => {
+            b.addEventListener('state-change', (e) => {
+                if (e.detail.state === 'SUCCESS') {
+                    term.writeln('\n\x1b[1;32m> SUCESSO! Instalação concluída.\x1b[0m');
+                }
             });
         });
-
     </script>
 </body>
 </html>
