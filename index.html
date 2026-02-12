@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Secure Flasher</title>
+<title>SKLAB404 // Wizard Flasher</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,23 +13,23 @@
 <style>
 body{
     margin:0;
-    background:#070b09;
+    background:#0a0f0d;
     font-family:monospace;
-    overflow:hidden;
     color:#00ff9d;
+    overflow:hidden;
 }
 
 /* SPLASH */
 #splash{
     position:fixed;
     inset:0;
-    background:#070b09;
+    background:#0a0f0d;
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
     cursor:pointer;
-    z-index:10;
+    z-index:20;
     transition:0.5s;
 }
 #splash.fade{
@@ -37,57 +37,71 @@ body{
     pointer-events:none;
 }
 
-/* TERMINAL */
-#wrapper{
-    position:fixed;
-    inset:0;
+/* LAYOUT */
+#container{
+    display:flex;
+    height:100vh;
+}
+
+/* SIDEBAR STEPS */
+#steps{
+    width:220px;
+    background:#060a08;
+    padding:30px 20px;
+    border-right:1px solid #00ff9d22;
+}
+
+.step{
+    margin-bottom:25px;
+    opacity:0.4;
+}
+.step.active{
+    opacity:1;
+}
+.step span{
+    display:block;
+    margin-top:5px;
+    font-size:0.8rem;
+    opacity:0.6;
+}
+
+/* MAIN AREA */
+#main{
+    flex:1;
+    position:relative;
     padding:40px;
 }
+
+/* DEVICE SELECTION */
+#deviceSelection{
+    display:flex;
+    gap:20px;
+}
+
+.deviceCard{
+    border:1px solid #00ff9d55;
+    padding:20px;
+    cursor:pointer;
+    transition:0.3s;
+}
+.deviceCard:hover{
+    background:#002e20;
+}
+.deviceCard.selected{
+    background:#003b2a;
+}
+
+/* TERMINAL */
 #term{
     width:100%;
-    height:100%;
+    height:60vh;
     background:#000000ee;
     border:1px solid #00ff9d55;
-    box-shadow:0 0 40px #00ff9d22;
+    margin-top:20px;
 }
 
 /* BUTTONS */
-#buttons{
-    position:fixed;
-    bottom:40px;
-    left:50%;
-    transform:translateX(-50%);
-    display:none;
-}
-
-.cleanBtn{
-    background:transparent !important;
-    color:#00ff9d !important;
-    border:1px solid #00ff9d !important;
-    padding:12px 30px !important;
-    font-size:14px !important;
-    letter-spacing:2px;
-    cursor:pointer !important;
-    margin:5px;
-}
-
-/* SUCCESS */
-#successScreen{
-    position:fixed;
-    inset:0;
-    background:#000;
-    display:none;
-    justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    z-index:20;
-    text-align:center;
-}
-#successScreen h2{
-    font-size:2rem;
-    letter-spacing:4px;
-}
-#successScreen button{
+.actionBtn{
     margin-top:20px;
     padding:10px 20px;
     border:1px solid #00ff9d;
@@ -95,39 +109,58 @@ body{
     color:#00ff9d;
     cursor:pointer;
 }
+
+/* SUCCESS */
+#success{
+    display:none;
+    text-align:center;
+    margin-top:40px;
+}
 </style>
 </head>
 <body>
 
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
-    <p>Click to initialize flashing system</p>
+    <p>Click to start flashing wizard</p>
 </div>
 
-<div id="wrapper">
-    <div id="term"></div>
-</div>
+<div id="container">
 
-<div id="buttons">
+    <div id="steps">
+        <div class="step active" id="step1">1. Select Device<span>Choose ESP model</span></div>
+        <div class="step" id="step2">2. Flash<span>Connect & Install</span></div>
+        <div class="step" id="step3">3. Done<span>Complete</span></div>
+    </div>
 
-    <esp-web-install-button manifest="manifest_c5.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-C5</button>
-    </esp-web-install-button>
+    <div id="main">
 
-    <esp-web-install-button manifest="manifest_c3.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-C3</button>
-    </esp-web-install-button>
+        <!-- STEP 1 -->
+        <div id="deviceSelection">
+            <div class="deviceCard" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
+            <div class="deviceCard" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
+            <div class="deviceCard" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
+        </div>
 
-    <esp-web-install-button manifest="manifest_s3.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-S3</button>
-    </esp-web-install-button>
+        <!-- STEP 2 -->
+        <div id="flashSection" style="display:none;">
 
-</div>
+            <esp-web-install-button id="flashBtn">
+                <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
+            </esp-web-install-button>
 
-<div id="successScreen">
-    <h2>FLASH COMPLETE</h2>
-    <p>Device programmed successfully</p>
-    <button onclick="location.reload()">FLASH ANOTHER</button>
+            <div id="term"></div>
+
+        </div>
+
+        <!-- STEP 3 -->
+        <div id="success">
+            <h2>FLASH COMPLETE</h2>
+            <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER DEVICE</button>
+        </div>
+
+    </div>
+
 </div>
 
 <script>
@@ -142,70 +175,44 @@ const term = new Terminal({
     fontSize:15,
     cursorBlink:true
 });
-
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
 term.open(document.getElementById('term'));
 fit.fit();
-window.addEventListener('resize',()=>fit.fit());
-
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-async function type(text, delay=25){
-    for(let i=0;i<text.length;i++){
-        term.write(text[i]);
-        await sleep(delay);
-    }
-    term.write("\r\n");
-}
 
 /* INTRO */
 function enter(){
-
-    // Criar áudio dentro do clique (gesto válido)
     const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
     intro.volume = 0.5;
-
-    intro.play().catch(err => {
-        console.log("Audio blocked:", err);
-    });
-
+    intro.play().catch(()=>{});
     document.getElementById("splash").classList.add("fade");
-
-    setTimeout(startSequence, 500);
 }
 
-async function startSequence(){
-    await type("Initializing secure flashing environment...");
-    await sleep(300);
-    await type("System ready.");
-    await sleep(300);
-    await type("Select firmware to begin.");
-    document.getElementById("buttons").style.display="block";
+/* DEVICE SELECTION */
+function selectDevice(manifest, element){
+
+    document.querySelectorAll(".deviceCard")
+        .forEach(el => el.classList.remove("selected"));
+
+    element.classList.add("selected");
+
+    const btn = document.getElementById("flashBtn");
+    btn.setAttribute("manifest", manifest);
+
+    document.getElementById("deviceSelection").style.display="none";
+    document.getElementById("flashSection").style.display="block";
+
+    document.getElementById("step1").classList.remove("active");
+    document.getElementById("step2").classList.add("active");
 }
 
-/* ===== REAL LOG CAPTURE ===== */
-
+/* LOG CAPTURE */
 const originalConsoleLog = console.log;
 
 console.log = function (...args) {
 
     const msg = args.join(" ");
 
-    // Mostrar modelo
-    if (msg.includes("ESP32-C5")) {
-        term.writeln("\n[DEVICE] ESP32-C5 detected");
-    }
-
-    if (msg.includes("ESP32-C3")) {
-        term.writeln("\n[DEVICE] ESP32-C3 detected");
-    }
-
-    if (msg.includes("ESP32-S3")) {
-        term.writeln("\n[DEVICE] ESP32-S3 detected");
-    }
-
-    // Mostrar progresso real
     if (
         msg.includes("Writing") ||
         msg.includes("%") ||
@@ -214,15 +221,21 @@ console.log = function (...args) {
         term.writeln("> " + msg);
     }
 
-    // Final do flash
+    if (
+        msg.includes("ESP32-C5") ||
+        msg.includes("ESP32-C3") ||
+        msg.includes("ESP32-S3")
+    ) {
+        term.writeln("[DEVICE] " + msg);
+    }
+
     if (
         msg.includes("Hash of data verified") ||
         msg.includes("Leaving...")
     ) {
-        term.writeln("\n✓ FLASH SUCCESSFUL");
-        setTimeout(()=>{
-            document.getElementById("successScreen").style.display="flex";
-        },800);
+        document.getElementById("step2").classList.remove("active");
+        document.getElementById("step3").classList.add("active");
+        document.getElementById("success").style.display="block";
     }
 
     originalConsoleLog.apply(console, args);
@@ -232,4 +245,3 @@ console.log = function (...args) {
 
 </body>
 </html>
-
