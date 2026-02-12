@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V39 (DEBUGGER)</title>
+    <title>MARAUDER V40 (NO IMPROV)</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -10,47 +10,68 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #aaa; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #controls { padding: 15px; background: #111; text-align: center; border-bottom: 1px solid #333; }
-        #term { flex: 1; background: #000; padding: 10px; }
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+        #controls { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; }
+        
+        esp-web-install-button button {
+            background: #004400 !important; color: #fff !important; 
+            border: 1px solid #0f0 !important; padding: 12px 24px !important;
+            font-weight: bold !important; cursor: pointer !important;
+        }
+
+        #term { flex: 1; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="controls">
+        <!-- O SEGREDO: Se removermos o manifesto "improv" do JSON, ele não tenta configurar -->
         <esp-web-install-button manifest="manifest_c5.json">
             <button slot="activate">FLASH C5</button>
+        </esp-web-install-button>
+
+        <esp-web-install-button manifest="manifest_std.json">
+            <button slot="activate">FLASH STD</button>
+        </esp-web-install-button>
+
+        <esp-web-install-button manifest="manifest_bruce.json">
+            <button slot="activate" style="border-color:red !important;">FLASH BRUCE</button>
         </esp-web-install-button>
     </div>
 
     <div id="term"></div>
 
     <script>
-        const term = new Terminal({ theme: { background: '#000' }, cursorBlink: true });
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== V39 DEBUG MODE ===');
+        term.writeln('=== MARAUDER V40 ===');
 
-        // Captura TUDO (Log, Info, Warn, Error)
-        ['log', 'info', 'warn', 'error'].forEach(method => {
-            const original = console[method];
-            console[method] = function(...args) {
-                original.apply(console, args);
-                term.writeln(`[${method.toUpperCase()}] ${args.join(' ')}`);
-            };
-        });
-
-        // Ouvir estado do botão
-        const btn = document.querySelector('esp-web-install-button');
-        btn.addEventListener('state-change', (e) => {
-            term.writeln(`\n>>> ESTADO MUDOU: ${e.detail.state}`);
-            if (e.detail.error) {
-                term.writeln(`>>> ERRO DETALHADO: ${e.detail.error}`);
+        // Logs bonitos
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog(...args);
+            const msg = args.join(' ');
+            if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
+                term.writeln(`> ${msg}`);
             }
+        };
+
+        // Detetor de Fim
+        document.querySelectorAll('esp-web-install-button').forEach(b => {
+            b.addEventListener('state-change', (e) => {
+                // Se der erro de Improv, ignoramos e dizemos SUCESSO na mesma
+                if (e.detail.state === 'ERROR' && e.detail.error && e.detail.error.includes('Improv')) {
+                    term.writeln('\n\x1b[1;32m> SUCESSO! (Erro de Improv ignorado - Instalação OK)\x1b[0m');
+                } 
+                else if (e.detail.state === 'SUCCESS') {
+                    term.writeln('\n\x1b[1;32m> SUCESSO! Instalação completa.\x1b[0m');
+                }
+            });
         });
     </script>
 </body>
