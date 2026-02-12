@@ -2,101 +2,113 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>MARAUDER V34 (HYBRID)</title>
+    <title>MARAUDER V35 (CUSTOM UI)</title>
     
-    <!-- 1. Motor Oficial (Infalível) -->
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-
-    <!-- 2. Terminal Visual -->
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
     <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
-        #header { padding: 20px; background: #111; border-bottom: 1px solid #333; text-align: center; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
         
-        /* Esconder o botão feio original e criar os nossos */
-        esp-web-install-button { display: inline-block; margin: 0 10px; }
-        
-        /* Estilo dos botões "Cyberpunk" */
-        button[slot="activate"] {
-            padding: 15px 25px; 
-            background: #003300; color: #fff; 
-            border: 1px solid #0f0; 
-            cursor: pointer; font-weight: bold; font-family: monospace; text-transform: uppercase;
-            font-size: 14px;
+        #header { 
+            padding: 20px; background: #050505; border-bottom: 2px solid #003300; 
+            display: flex; justify-content: center; gap: 20px;
         }
-        button[slot="activate"]:hover { background: #005500; box-shadow: 0 0 10px #0f0; }
         
-        #term { flex: 1; padding: 10px; position: relative; }
-        
-        /* Truque para esconder o popup oficial mas manter a funcionalidade (Opcional, remove se quiseres ver o popup) */
-        /* body.flashing .ewt-dialog { opacity: 0; pointer-events: none; } */
+        /* Estilo dos Botões */
+        esp-web-install-button button {
+            padding: 15px 30px !important; 
+            background: #002200 !important; 
+            color: #0f0 !important; 
+            border: 1px solid #0f0 !important; 
+            font-family: 'Courier New', monospace !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            cursor: pointer !important;
+            transition: 0.2s;
+        }
+        esp-web-install-button button:hover {
+            background: #004400 !important;
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        #term-container { 
+            flex: 1; padding: 20px; background: #000; 
+            border-top: 1px solid #111;
+        }
     </style>
 </head>
 <body>
 
     <div id="header">
-        <!-- BOTÃO C5 -->
         <esp-web-install-button manifest="manifest_c5.json">
             <button slot="activate">FLASH C5</button>
         </esp-web-install-button>
 
-        <!-- BOTÃO STD -->
         <esp-web-install-button manifest="manifest_std.json">
             <button slot="activate">FLASH STD</button>
         </esp-web-install-button>
 
-        <!-- BOTÃO BRUCE -->
         <esp-web-install-button manifest="manifest_bruce.json">
-            <button slot="activate" style="border-color:#f00; color:#f55;">FLASH BRUCE</button>
+            <button slot="activate" style="border-color:#f00 !important; color:#f00 !important;">FLASH BRUCE</button>
         </esp-web-install-button>
     </div>
 
-    <div id="term"></div>
+    <div id="term-container"></div>
 
     <script>
-        // Configurar Terminal
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0' }, cursorBlink: true, fontSize: 14 });
+        // 1. TERMINAL
+        const term = new Terminal({ 
+            theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, 
+            cursorBlink: true, fontSize: 14, fontFamily: 'Courier New' 
+        });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
-        term.open(document.getElementById('term'));
+        term.open(document.getElementById('term-container'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V34 (MOTOR OFICIAL) ===');
-        term.writeln('> Sistema pronto.');
-        term.writeln('> Clica nos botões acima para iniciar.');
+        term.writeln('=== MARAUDER SYSTEM READY ===');
+        term.writeln('> Aguardando comando...');
 
-        // O TRUQUE DE MESTRE:
-        // Vamos "roubar" os logs da consola do browser e metê-los no terminal verde.
+        // 2. INTERCETAR LOGS (O TEU PEDIDO)
         const originalLog = console.log;
-        const originalInfo = console.info;
-        const originalWarn = console.warn;
-        const originalError = console.error;
-
-        function writeToTerm(msg, type) {
-            // Filtra mensagens chatas, mantém as do esptool
-            if (typeof msg === 'string') {
-                if (msg.includes('%') || msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Chip')) {
-                    term.writeln(msg);
-                }
-            }
-            // Se for objeto, tenta converter
-            else if (typeof msg === 'object') {
-                try { term.writeln(JSON.stringify(msg)); } catch(e){}
-            }
-        }
-
         console.log = function(...args) {
-            originalLog(...args);
-            writeToTerm(args[0], 'log');
+            originalLog(...args); // Mantém funcionalidade original
+            
+            const msg = args.join(' ');
+            
+            // Filtros para mostrar apenas o interessante
+            if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
+                term.writeln(`> ${msg}`);
+            }
         };
-        console.info = function(...args) {
-            originalInfo(...args);
-            writeToTerm(args[0], 'info');
-        };
+
+        // 3. DETETAR FIM DA INSTALAÇÃO (O TEU PEDIDO)
+        // O componente dispara eventos quando o estado muda
+        const buttons = document.querySelectorAll('esp-web-install-button');
+        
+        buttons.forEach(btn => {
+            btn.addEventListener('state-change', (ev) => {
+                // Estados: 'INSTALLING', 'SUCCESS', 'ERROR'
+                if (ev.detail.state === 'INSTALLING') {
+                    term.writeln('\n>>> INICIANDO PROCESSO DE FLASH...');
+                }
+                else if (ev.detail.state === 'SUCCESS') {
+                    term.writeln('\n========================================');
+                    term.writeln('   ✅ INSTALAÇÃO COMPLETA! SUCESSO.   ');
+                    term.writeln('========================================');
+                    term.writeln('> Podes desligar ou reiniciar o dispositivo.');
+                }
+                else if (ev.detail.state === 'ERROR') {
+                    term.writeln('\n>>> ❌ ERRO NA INSTALAÇÃO.');
+                    term.writeln(`> Detalhes: ${ev.detail.error || 'Desconhecido'}`);
+                }
+            });
+        });
+
     </script>
 </body>
 </html>
