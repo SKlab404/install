@@ -2,11 +2,9 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 Pure Flasher</title>
-
+<title>SKLAB404 – C5 Test</title>
 <style>
 body{
-    margin:0;
     background:#0b1110;
     color:#8affc1;
     font-family:monospace;
@@ -17,19 +15,18 @@ body{
     height:100vh;
 }
 button{
-    background:transparent;
-    border:1px solid #8affc1;
-    color:#8affc1;
     padding:12px 30px;
-    font-size:16px;
+    border:1px solid #8affc1;
+    background:transparent;
+    color:#8affc1;
     cursor:pointer;
-    margin-bottom:20px;
 }
 #log{
-    width:80%;
+    width:90%;
     max-width:900px;
     height:350px;
     border:1px solid #8affc1;
+    margin-top:20px;
     padding:10px;
     overflow:auto;
 }
@@ -37,12 +34,14 @@ button{
 </head>
 <body>
 
-<button id="connectBtn">CONNECT DEVICE</button>
+<button id="connectBtn">CONNECT ESP32-C5</button>
 <div id="log"></div>
 
 <script type="module">
 
-import { ESPLoader, Transport } from "https://cdn.jsdelivr.net/npm/esptool-js@0.5.2/bundle.js";
+// 🔥 Usar build mais recente do repositório oficial
+import { ESPLoader, Transport } 
+from "https://rawcdn.githack.com/espressif/esptool-js/master/bundle.js";
 
 const logDiv = document.getElementById("log");
 
@@ -57,12 +56,9 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
     try {
 
-        log("esptool.js");
         log("Requesting serial port...");
-
         port = await navigator.serial.requestPort();
 
-        log("Opening port...");
         await port.open({ baudRate: 115200 });
 
         const transport = new Transport(port);
@@ -77,38 +73,26 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
             }
         });
 
-        log("Resetting into bootloader...");
-
-        // Sequência clássica ESP auto-reset
-        await port.setSignals({ dataTerminalReady: false, requestToSend: true });
-        await new Promise(r => setTimeout(r, 100));
-        await port.setSignals({ dataTerminalReady: true, requestToSend: false });
-        await new Promise(r => setTimeout(r, 100));
-        await port.setSignals({ dataTerminalReady: false, requestToSend: false });
-
         log("Connecting to ESP...");
 
         await loader.main();
 
         log("Connected!");
-        log("Chip detected: " + loader.chipName);
+        log("Chip: " + loader.chipName);
 
         const mac = await loader.readMac();
         log("MAC: " + mac);
 
-    } catch (err){
+    } catch (err) {
 
-        log("Error: " + err);
+        log("ERROR: " + err);
 
         if (port) {
             try { await port.close(); } catch(e){}
         }
-
-        log("If connection fails, try holding BOOT button.");
     }
 
 });
-
 </script>
 
 </body>
