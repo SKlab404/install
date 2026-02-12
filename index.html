@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Hybrid Interface</title>
+<title>SKLAB404 Flasher</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -11,270 +11,129 @@
 <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
 <style>
-:root{
-    --bg:#0b0f14;
-    --panel:#111821;
-    --accent:#00f5c4;
-    --text:#d6faff;
-    --border:#1f2a36;
-}
-
-.light{
-    --bg:#f4f7fa;
-    --panel:#ffffff;
-    --accent:#0066ff;
-    --text:#111;
-    --border:#d0d7e2;
-}
-
 body{
     margin:0;
-    background:var(--bg);
-    color:var(--text);
-    font-family:system-ui,monospace;
-    transition:0.3s;
-}
-
-header{
+    background:#0c1117;
+    color:#00ffc8;
+    font-family:monospace;
     display:flex;
-    justify-content:space-between;
+    justify-content:center;
     align-items:center;
-    padding:20px 40px;
-    border-bottom:1px solid var(--border);
-    background:var(--panel);
+    height:100vh;
 }
 
-#container{
-    display:flex;
-    height:calc(100vh - 80px);
+/* MAIN CARD */
+#card{
+    border:1px solid #00ffc833;
+    padding:40px;
+    text-align:center;
 }
 
-#sidebar{
-    width:300px;
-    background:var(--panel);
-    border-right:1px solid var(--border);
-    padding:30px;
-    box-sizing:border-box;
-}
-
-#terminalArea{
-    flex:1;
-    padding:30px;
-    box-sizing:border-box;
-}
-
-.section{
-    margin-bottom:25px;
-}
-
-h3{
-    margin:0 0 10px 0;
-    font-weight:600;
-    font-size:14px;
-    opacity:0.8;
-}
-
-select, button{
-    width:100%;
-    padding:8px;
+button{
+    padding:12px 25px;
+    border:1px solid #00ffc8;
     background:transparent;
-    color:var(--text);
-    border:1px solid var(--border);
-    margin-top:5px;
+    color:#00ffc8;
     cursor:pointer;
 }
 
 button:hover{
-    border-color:var(--accent);
-    color:var(--accent);
+    background:#002822;
 }
 
-.modeToggle{
-    display:flex;
-    gap:10px;
-}
-
-.modeBtn.active{
-    border-color:var(--accent);
-    color:var(--accent);
-}
-
-#progressContainer{
-    width:100%;
-    height:8px;
-    background:var(--border);
-    margin-top:15px;
+/* TERMINAL OVERLAY */
+#terminalOverlay{
+    position:fixed;
+    inset:0;
+    background:#000000f0;
     display:none;
-}
-
-#progressBar{
-    height:100%;
-    width:0%;
-    background:var(--accent);
-    transition:0.2s;
+    flex-direction:column;
+    padding:30px;
 }
 
 #term{
-    margin-top:20px;
-    height:70%;
-    border:1px solid var(--border);
+    flex:1;
+    border:1px solid #00ffc833;
 }
 
-.status{
-    margin-top:10px;
-    font-size:13px;
-    opacity:0.7;
+#closeBtn{
+    margin-top:15px;
 }
 </style>
 </head>
 <body>
 
-<header>
-<div>SKLAB404 // Hybrid Flasher</div>
-<div>
-<button onclick="toggleTheme()">Toggle Theme</button>
-</div>
-</header>
-
-<div id="container">
-
-<div id="sidebar">
-
-<div class="section">
-<h3>Mode</h3>
-<div class="modeToggle">
-<button class="modeBtn active" onclick="setMode('standard')" id="stdBtn">Standard</button>
-<button class="modeBtn" onclick="setMode('expert')" id="expBtn">Expert</button>
-</div>
+<div id="card">
+    <h2>SKLAB404 Firmware Installer</h2>
+    <button onclick="startFlash()">Install Firmware</button>
 </div>
 
-<div class="section" id="standardSection">
-<h3>Firmware</h3>
-<select id="firmwareSelect">
-<option value="manifest_c5.json">ESP32-C5</option>
-<option value="manifest_c3.json">ESP32-C3</option>
-<option value="manifest_s3.json">ESP32-S3</option>
-</select>
+<!-- Hidden esp tool -->
+<esp-web-install-button id="hiddenFlash" manifest="manifest_c5.json" style="display:none;"></esp-web-install-button>
 
-<esp-web-install-button id="flashBtn"></esp-web-install-button>
-</div>
-
-<div class="section" id="expertSection" style="display:none;">
-<h3>Expert Mode</h3>
-<p style="font-size:12px;opacity:0.6;">
-Upload bins and flash manually (C5 experimental).
-</p>
-<button disabled>Expert Engine Loading...</button>
-</div>
-
-<div class="section">
-<h3>Controls</h3>
-<button onclick="forceReset()">Force Reset</button>
-</div>
-
-</div>
-
-<div id="terminalArea">
-
-<div class="status" id="status">Idle</div>
-
-<div id="progressContainer">
-<div id="progressBar"></div>
-</div>
-
-<div id="term"></div>
-
-</div>
-
+<!-- Terminal Overlay -->
+<div id="terminalOverlay">
+    <div id="term"></div>
+    <button id="closeBtn" onclick="closeTerminal()">Close</button>
 </div>
 
 <script>
 
-/* TERMINAL */
+/* TERMINAL SETUP */
 const term = new Terminal({
-theme:{background:'transparent',foreground:'#00ffcc'},
-fontSize:14,
-cursorBlink:true
+    theme:{
+        background:'#000000',
+        foreground:'#00ffc8',
+        cursor:'#00ffc8'
+    },
+    fontSize:14,
+    cursorBlink:true
 });
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
 term.open(document.getElementById("term"));
-fit.fit();
 
-/* DEFAULT MANIFEST */
-document.getElementById("flashBtn").setAttribute(
-"manifest",
-document.getElementById("firmwareSelect").value
-);
+function startFlash(){
+    document.getElementById("terminalOverlay").style.display="flex";
+    fit.fit();
 
-document.getElementById("firmwareSelect").addEventListener("change",e=>{
-document.getElementById("flashBtn").setAttribute("manifest",e.target.value);
-});
+    term.clear();
+    term.writeln("Initializing flashing process...\n");
 
-/* MODE SWITCH */
-function setMode(mode){
-document.getElementById("stdBtn").classList.remove("active");
-document.getElementById("expBtn").classList.remove("active");
-
-if(mode==="standard"){
-document.getElementById("stdBtn").classList.add("active");
-document.getElementById("standardSection").style.display="block";
-document.getElementById("expertSection").style.display="none";
-}else{
-document.getElementById("expBtn").classList.add("active");
-document.getElementById("standardSection").style.display="none";
-document.getElementById("expertSection").style.display="block";
-}
+    // Trigger real esp-web-tools click
+    document.getElementById("hiddenFlash")
+        .shadowRoot
+        .querySelector("button")
+        .click();
 }
 
-/* THEME */
-function toggleTheme(){
-document.body.classList.toggle("light");
+function closeTerminal(){
+    document.getElementById("terminalOverlay").style.display="none";
 }
 
-/* RESET */
-function forceReset(){
-const container=document.getElementById("standardSection");
-const old=document.getElementById("flashBtn");
-const clone=old.cloneNode(true);
-old.replaceWith(clone);
-document.getElementById("progressBar").style.width="0%";
-document.getElementById("progressContainer").style.display="none";
-term.writeln("\nReset complete.");
-}
+/* CAPTURE LOGS */
+const originalConsoleLog = console.log;
 
-/* LOG CAPTURE */
-const originalConsoleLog=console.log;
+console.log = function(...args){
 
-console.log=function(...args){
+    const msg = args.join(" ");
 
-const msg=args.join(" ");
+    if(msg.includes("ESP32")){
+        term.writeln("\n[DEVICE] " + msg);
+    }
 
-if(msg.includes("ESP32")){
-term.writeln("[DEVICE] "+msg);
-document.getElementById("status").innerText=msg;
-}
+    if(msg.includes("Writing") || msg.includes("%") || msg.includes("Erasing")){
+        term.writeln("> " + msg);
+    }
 
-if(msg.includes("%")){
-const match=msg.match(/(\d+)%/);
-if(match){
-document.getElementById("progressContainer").style.display="block";
-document.getElementById("progressBar").style.width=match[1]+"%";
-}
-term.writeln("> "+msg);
-}
+    if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
+        term.writeln("\n✓ FLASH COMPLETE");
+    }
 
-if(msg.includes("Connecting")){
-document.getElementById("status").innerText="Connecting...";
-}
-
-if(msg.includes("Hash of data verified")||msg.includes("Leaving...")){
-document.getElementById("status").innerText="Flash Complete";
-}
-
-originalConsoleLog.apply(console,args);
+    originalConsoleLog.apply(console,args);
 };
 
 </script>
+
 </body>
 </html>
