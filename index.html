@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Wizard Pro+</title>
+<title>SKLAB404 // PRO MAX</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,32 +13,33 @@
 <style>
 body{
     margin:0;
-    background:#0a0f0d;
+    background:#0b1110;
     font-family:monospace;
     color:#00ff9d;
     overflow:hidden;
 }
 
+/* SPLASH */
 #splash{
     position:fixed;
     inset:0;
-    background:#0a0f0d;
+    background:#0b1110;
     display:flex;
     justify-content:center;
     align-items:center;
     flex-direction:column;
     cursor:pointer;
     z-index:20;
-    transition:0.5s;
+    transition:0.4s;
 }
 #splash.fade{opacity:0;pointer-events:none;}
 
+/* LAYOUT */
 #container{display:flex;height:100vh;}
-
 #steps{
     width:220px;
-    background:#060a08;
-    padding:30px 20px;
+    background:#070c0b;
+    padding:30px;
     border-right:1px solid #00ff9d22;
 }
 .step{margin-bottom:25px;opacity:0.4;}
@@ -56,33 +57,27 @@ body{
 }
 .deviceCard:hover{background:#002e20;}
 .deviceCard.selected{background:#003b2a;}
-.deviceCard.disabled{
-    opacity:0.3;
-    pointer-events:none;
+.deviceCard.disabled{opacity:0.3;pointer-events:none;}
+
+#status{
+    margin-top:10px;
+    font-size:0.9rem;
+    opacity:0.8;
 }
 
 #term{
     width:100%;
-    height:40vh;
+    height:38vh;
     background:#000000ee;
     border:1px solid #00ff9d55;
     margin-top:20px;
-}
-
-.actionBtn{
-    margin-top:20px;
-    padding:10px 20px;
-    border:1px solid #00ff9d;
-    background:transparent;
-    color:#00ff9d;
-    cursor:pointer;
 }
 
 #progressContainer{
     width:100%;
     height:20px;
     background:#001a12;
-    margin-top:20px;
+    margin-top:15px;
     display:none;
 }
 #progressBar{
@@ -92,78 +87,85 @@ body{
     transition:width 0.2s;
 }
 
-#advanced{
+.actionBtn{
     margin-top:15px;
+    padding:8px 18px;
+    border:1px solid #00ff9d;
+    background:transparent;
+    color:#00ff9d;
+    cursor:pointer;
+}
+
+#advanced{
+    margin-top:10px;
     border-top:1px solid #00ff9d22;
     padding-top:10px;
     display:none;
 }
 
-#success{
-    display:none;
-    margin-top:30px;
-}
+#success{display:none;margin-top:20px;}
 </style>
 </head>
 <body>
 
 <div id="splash" onclick="enter()">
-    <h1>SKLAB404</h1>
-    <p>Click to start flashing wizard</p>
+<h1>SKLAB404</h1>
+<p>Click to initialize secure flasher</p>
 </div>
 
 <div id="container">
 
 <div id="steps">
-    <div class="step active" id="step1">1. Select Device</div>
-    <div class="step" id="step2">2. Flash</div>
-    <div class="step" id="step3">3. Done</div>
+<div class="step active" id="step0">0. Detect Device</div>
+<div class="step" id="step1">1. Select Firmware</div>
+<div class="step" id="step2">2. Flash</div>
+<div class="step" id="step3">3. Done</div>
 </div>
 
 <div id="main">
 
-<!-- STEP 1 -->
-<div id="deviceSelection">
-    <div class="deviceCard" data-model="C5" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
-    <div class="deviceCard" data-model="C3" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
-    <div class="deviceCard" data-model="S3" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
+<!-- DETECT -->
+<button class="actionBtn" onclick="detectDevice()">Detect Device</button>
+<div id="status">No device detected</div>
+
+<!-- DEVICE SELECT -->
+<div id="deviceSelection" style="margin-top:20px; display:none;">
+<div class="deviceCard" data-model="C5" onclick="selectDevice('manifest_c5.json',this)">ESP32-C5</div>
+<div class="deviceCard" data-model="C3" onclick="selectDevice('manifest_c3.json',this)">ESP32-C3</div>
+<div class="deviceCard" data-model="S3" onclick="selectDevice('manifest_s3.json',this)">ESP32-S3</div>
 </div>
 
-<!-- STEP 2 -->
+<!-- FLASH -->
 <div id="flashSection" style="display:none;">
 
-    <button class="actionBtn" onclick="toggleAdvanced()">Advanced Settings</button>
+<button class="actionBtn" onclick="toggleAdvanced()">Advanced</button>
 
-    <div id="advanced">
-        <label>Baud Rate:</label>
-        <select id="baudSelect">
-            <option value="115200">115200</option>
-            <option value="460800">460800</option>
-            <option value="921600">921600</option>
-        </select>
-        <br><br>
-        <label>
-            <input type="checkbox" id="eraseChk">
-            Erase before flash
-        </label>
-    </div>
+<div id="advanced">
+<label>Baud:</label>
+<select id="baudSelect">
+<option value="115200">115200</option>
+<option value="460800">460800</option>
+<option value="921600">921600</option>
+</select>
+</div>
 
-    <esp-web-install-button id="flashBtn">
-        <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
-    </esp-web-install-button>
+<div id="flashContainer">
+<esp-web-install-button id="flashBtn"></esp-web-install-button>
+</div>
 
-    <div id="progressContainer">
-        <div id="progressBar"></div>
-    </div>
+<button class="actionBtn" onclick="forceReset()">Force Reset Flash</button>
 
-    <div id="term"></div>
+<div id="progressContainer">
+<div id="progressBar"></div>
+</div>
+
+<div id="term"></div>
 
 </div>
 
-<!-- STEP 3 -->
 <div id="success">
-    <h2>FLASH COMPLETE</h2>
-    <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER</button>
+<h2>FLASH COMPLETE</h2>
+<button class="actionBtn" onclick="location.reload()">Flash Another</button>
 </div>
 
 </div>
@@ -171,11 +173,15 @@ body{
 
 <script>
 
+let detectedModel = null;
+let lastActivity = Date.now();
+let watchdog = null;
+
 /* TERMINAL */
 const term = new Terminal({
-    theme:{background:'transparent',foreground:'#00ff9d',cursor:'#00ff9d'},
-    fontSize:15,
-    cursorBlink:true
+theme:{background:'transparent',foreground:'#00ff9d',cursor:'#00ff9d'},
+fontSize:14,
+cursorBlink:true
 });
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
@@ -184,75 +190,87 @@ fit.fit();
 
 /* INTRO */
 function enter(){
-    const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
-    intro.volume = 0.5;
-    intro.play().catch(()=>{});
-    document.getElementById("splash").classList.add("fade");
+const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
+intro.volume = 0.4;
+intro.play().catch(()=>{});
+document.getElementById("splash").classList.add("fade");
 }
 
-/* ADVANCED TOGGLE */
-function toggleAdvanced(){
-    const adv = document.getElementById("advanced");
-    adv.style.display = adv.style.display === "block" ? "none" : "block";
+/* DETECT */
+function detectDevice(){
+term.writeln("Requesting device...");
+document.getElementById("step0").classList.add("active");
 }
 
-/* DEVICE SELECT */
+/* SELECT DEVICE */
 function selectDevice(manifest, el){
-    document.querySelectorAll(".deviceCard").forEach(e=>e.classList.remove("selected"));
-    el.classList.add("selected");
+document.querySelectorAll(".deviceCard").forEach(e=>e.classList.remove("selected"));
+el.classList.add("selected");
 
-    const btn = document.getElementById("flashBtn");
-    btn.setAttribute("manifest", manifest);
+localStorage.setItem("lastModel", el.dataset.model);
 
-    document.getElementById("deviceSelection").style.display="none";
-    document.getElementById("flashSection").style.display="block";
+const btn = document.getElementById("flashBtn");
+btn.setAttribute("manifest", manifest);
 
-    document.getElementById("step1").classList.remove("active");
-    document.getElementById("step2").classList.add("active");
+document.getElementById("flashSection").style.display="block";
+document.getElementById("step1").classList.add("active");
+document.getElementById("step2").classList.add("active");
+
+setupWatchdog();
 }
 
-/* AUTO DETECT + LOG + PROGRESS */
+/* WATCHDOG */
+function setupWatchdog(){
+clearInterval(watchdog);
+watchdog = setInterval(()=>{
+if(Date.now() - lastActivity > 15000){
+term.writeln("\n⚠ Flash appears stalled. Resetting...");
+forceReset();
+}
+},5000);
+}
+
+/* FORCE RESET */
+function forceReset(){
+clearInterval(watchdog);
+const container = document.getElementById("flashContainer");
+const old = document.getElementById("flashBtn");
+const clone = old.cloneNode(true);
+container.innerHTML="";
+container.appendChild(clone);
+document.getElementById("progressBar").style.width="0%";
+}
+
+/* LOG CAPTURE */
 const originalConsoleLog = console.log;
 
 console.log = function (...args){
 
-    const msg = args.join(" ");
+const msg = args.join(" ");
+lastActivity = Date.now();
 
-    // Auto detect model
-    if(msg.includes("ESP32")){
-        term.writeln("[DETECTED] " + msg);
-
-        if(msg.includes("C5")) disableOthers("C5");
-        if(msg.includes("C3")) disableOthers("C3");
-        if(msg.includes("S3")) disableOthers("S3");
-    }
-
-    if(msg.includes("Writing") || msg.includes("%")){
-        term.writeln("> " + msg);
-
-        const match = msg.match(/(\d+)%/);
-        if(match){
-            document.getElementById("progressContainer").style.display="block";
-            document.getElementById("progressBar").style.width = match[1] + "%";
-        }
-    }
-
-    if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
-        document.getElementById("step2").classList.remove("active");
-        document.getElementById("step3").classList.add("active");
-        document.getElementById("success").style.display="block";
-    }
-
-    originalConsoleLog.apply(console,args);
-};
-
-function disableOthers(model){
-    document.querySelectorAll(".deviceCard").forEach(card=>{
-        if(card.dataset.model !== model){
-            card.classList.add("disabled");
-        }
-    });
+if(msg.includes("ESP32")){
+term.writeln("[DETECTED] " + msg);
+document.getElementById("status").innerText = msg;
 }
+
+if(msg.includes("%")){
+const match = msg.match(/(\d+)%/);
+if(match){
+document.getElementById("progressContainer").style.display="block";
+document.getElementById("progressBar").style.width = match[1] + "%";
+}
+term.writeln("> " + msg);
+}
+
+if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
+clearInterval(watchdog);
+document.getElementById("step3").classList.add("active");
+document.getElementById("success").style.display="block";
+}
+
+originalConsoleLog.apply(console,args);
+};
 
 </script>
 </body>
