@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 Flash Utility</title>
+<title>SKLAB404 Universal Flasher</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,67 +13,56 @@
 <style>
 body{
     margin:0;
-    background:#0a0f0d;
+    background:#0b1110;
     font-family:monospace;
     overflow:hidden;
-    color:#9effd1;
+    color:#8affc1;
 }
 
-/* SPLASH */
 #splash{
     position:fixed;
     width:100%;
     height:100%;
-    background:#0a0f0d;
+    background:#0b1110;
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
     cursor:pointer;
     z-index:10;
-    transition:0.5s ease;
 }
 #splash.fade{
     opacity:0;
     pointer-events:none;
 }
-#splash h1{
-    font-size:3em;
-    letter-spacing:6px;
-    color:#9effd1;
-}
-#splash p{
-    opacity:0.6;
-}
 
-/* TERMINAL */
 #term{
     position:fixed;
     width:100%;
     height:100%;
 }
 
-/* BUTTON AREA */
-#flashArea{
+#buttons{
     position:fixed;
     bottom:50px;
     left:50%;
     transform:translateX(-50%);
-    display:none;
     z-index:1000;
+    display:none;
 }
 
 .cleanBtn{
     background:transparent !important;
-    color:#9effd1 !important;
-    border:1px solid #9effd1 !important;
+    color:#8affc1 !important;
+    border:1px solid #8affc1 !important;
     padding:12px 30px !important;
     font-size:14px !important;
-    letter-spacing:3px;
+    letter-spacing:2px;
     cursor:pointer !important;
+    margin:5px;
 }
 .cleanBtn:hover{
-    background:#12201a !important;
+    background:#13201c !important;
 }
 </style>
 </head>
@@ -81,17 +70,31 @@ body{
 
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
-    <p>Initialize secure flashing utility</p>
+    <p>Universal ESP Flasher</p>
 </div>
 
 <div id="term"></div>
 
-<div id="flashArea">
-    <esp-web-install-button manifest="manifest_c5.json">
-        <button slot="activate" class="cleanBtn">
-            AUTHORIZE FLASH
-        </button>
+<div id="buttons">
+
+    <!-- CONNECT BUTTON -->
+    <esp-web-install-button id="connectBtn" manifest="manifest_c5.json">
+        <button slot="activate" class="cleanBtn">CONNECT DEVICE</button>
     </esp-web-install-button>
+
+    <!-- FIRMWARE BUTTONS -->
+    <esp-web-install-button id="btnC5" manifest="manifest_c5.json">
+        <button slot="activate" class="cleanBtn">FLASH ESP32-C5</button>
+    </esp-web-install-button>
+
+    <esp-web-install-button id="btnC3" manifest="manifest_c3.json">
+        <button slot="activate" class="cleanBtn">FLASH ESP32-C3</button>
+    </esp-web-install-button>
+
+    <esp-web-install-button id="btnS3" manifest="manifest_s3.json">
+        <button slot="activate" class="cleanBtn">FLASH ESP32-S3</button>
+    </esp-web-install-button>
+
 </div>
 
 <script>
@@ -99,8 +102,8 @@ body{
 const term = new Terminal({
     theme:{
         background:'transparent',
-        foreground:'#9effd1',
-        cursor:'#9effd1'
+        foreground:'#8affc1',
+        cursor:'#8affc1'
     },
     fontFamily:'Courier New, monospace',
     fontSize:14,
@@ -136,37 +139,38 @@ function enter(){
 
 async function startSequence(){
 
-    await type("Booting secure environment...");
+    await type("Initializing universal flashing utility...");
     await sleep(400);
+    await type("Press CONNECT DEVICE to detect ESP...");
+    document.getElementById("buttons").style.display="block";
 
-    await type("Loading drivers...");
-    await sleep(400);
-
-    await type("Waiting for device connection...");
-    await sleep(400);
-
-    term.write("\r\n");
-    term.writeln("System ready.");
-    term.writeln("");
-    term.writeln("Authorization required.");
-
-    document.getElementById("flashArea").style.display="block";
+    // Hide firmware buttons initially
+    document.getElementById("btnC5").style.display="none";
+    document.getElementById("btnC3").style.display="none";
+    document.getElementById("btnS3").style.display="none";
 }
 
-/* LOG CAPTURE */
+/* DETECT CHIP */
 const originalConsoleLog = console.log;
 
 console.log = function (...args) {
     const msg = args.join(" ");
 
-    // Chip detection
     if (msg.includes("ESP32-C5")) {
-        term.writeln("");
-        term.writeln("[DEVICE] ESP32-C5 detected");
-        term.writeln("> Compatible firmware selected.");
+        term.writeln("\n[DEVICE] ESP32-C5 detected");
+        document.getElementById("btnC5").style.display="inline-block";
     }
 
-    // Progress
+    if (msg.includes("ESP32-C3")) {
+        term.writeln("\n[DEVICE] ESP32-C3 detected");
+        document.getElementById("btnC3").style.display="inline-block";
+    }
+
+    if (msg.includes("ESP32-S3")) {
+        term.writeln("\n[DEVICE] ESP32-S3 detected");
+        document.getElementById("btnS3").style.display="inline-block";
+    }
+
     if (
         msg.includes("Writing") ||
         msg.includes("%") ||
@@ -177,23 +181,6 @@ console.log = function (...args) {
 
     originalConsoleLog.apply(console, args);
 };
-
-/* INSTALL STATES */
-document.querySelector("esp-web-install-button")
-.addEventListener("state-change",(e)=>{
-    if(e.detail.state==="INSTALLING"){
-        term.writeln("");
-        term.writeln("> Flashing firmware...");
-    }
-    if(e.detail.state==="SUCCESS"){
-        term.writeln("");
-        term.writeln("✓ Flash complete");
-    }
-    if(e.detail.state==="ERROR"){
-        term.writeln("");
-        term.writeln("✗ " + e.detail.error);
-    }
-});
 
 </script>
 
