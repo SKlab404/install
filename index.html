@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- FORÇAR DARK MODE NATIVO -->
-    <meta name="color-scheme" content="dark">
-    <title>MARAUDER V36 (SKIN HACK)</title>
+    <title>MARAUDER V37 (INVERTED)</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -13,37 +11,24 @@
     <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        /* TEMA GLOBAL */
-        :root {
-            --esp-tools-button-color: #00ff00; /* Verde Hacker */
-            --esp-tools-button-text-color: #000000;
-        }
-
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
+        body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; overflow: hidden; }
         
-        #header { 
-            padding: 20px; background: #050505; border-bottom: 2px solid #003300; 
-            display: flex; justify-content: center; gap: 20px;
-        }
+        #header { padding: 20px; background: #050505; border-bottom: 2px solid #003300; text-align: center; }
         
-        /* Estilo dos Botões Principais */
+        /* Estilo dos Botões Iniciais */
         esp-web-install-button button {
             padding: 15px 30px !important; 
-            background: #002200 !important; 
-            color: #0f0 !important; 
-            border: 1px solid #0f0 !important; 
-            font-family: 'Courier New', monospace !important;
-            font-weight: bold !important;
-            text-transform: uppercase !important;
-            cursor: pointer !important;
-            transition: 0.2s;
-        }
-        esp-web-install-button button:hover {
-            background: #004400 !important;
-            box-shadow: 0 0 15px #0f0;
+            background: #002200 !important; color: #0f0 !important; border: 1px solid #0f0 !important; 
+            font-family: monospace !important; font-weight: bold !important; cursor: pointer !important;
         }
 
         #term-container { flex: 1; padding: 20px; background: #000; border-top: 1px solid #111; }
+
+        /* O HACK DO INVERT: Aplica-se à caixa de diálogo quando ela aparece */
+        ewt-install-dialog {
+            filter: invert(0.92) hue-rotate(180deg) !important;
+            background-color: #fff !important; /* Invertido fica preto */
+        }
     </style>
 </head>
 <body>
@@ -65,18 +50,18 @@
     <div id="term-container"></div>
 
     <script>
-        // 1. TERMINAL
-        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, cursorBlink: true, fontSize: 14, fontFamily: 'Courier New' });
+        // TERMINAL
+        const term = new Terminal({ theme: { background: '#000', foreground: '#0f0', cursor: '#0f0' }, cursorBlink: true, fontSize: 14 });
         const fit = new FitAddon.FitAddon();
         term.loadAddon(fit);
         term.open(document.getElementById('term-container'));
         fit.fit();
         window.onresize = () => fit.fit();
 
-        term.writeln('=== MARAUDER V36 (INJECTOR MODE) ===');
-        term.writeln('> Sistema de injeção visual pronto.');
+        term.writeln('=== MARAUDER V37 (DARK MODE FORÇADO) ===');
+        term.writeln('> O popup vai aparecer com cores invertidas.');
 
-        // 2. LOGS NO TERMINAL
+        // LOGS
         const originalLog = console.log;
         console.log = function(...args) {
             originalLog(...args);
@@ -86,44 +71,11 @@
             }
         };
 
-        // 3. O ESPIÃO (MUTATION OBSERVER)
-        // Este código fica a vigiar o HTML. Assim que a janela da Espressif aparece, injeta CSS nela.
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    // Procura pelo componente do diálogo (o nome costuma ser ewt-install-dialog ou similar)
-                    if (node.tagName && node.tagName.toLowerCase().includes('dialog')) {
-                        hackTheStyle(node);
-                    }
-                });
-            });
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        function hackTheStyle(element) {
-            // Tenta aceder ao Shadow DOM
-            if (element.shadowRoot) {
-                term.writeln('> ALVO DETETADO! Injetando CSS...');
-                
-                const style = document.createElement('style');
-                style.textContent = `
-                    /* FORÇAR TEMA HACKER DENTRO DA CAIXA */
-                    :host { --mdc-theme-surface: #111; --mdc-theme-on-surface: #0f0; }
-                    div, span, p, h1, h2 { color: #0f0 !important; font-family: monospace !important; }
-                    button { border: 1px solid #0f0 !important; color: #0f0 !important; background: #002200 !important; }
-                    .mdc-dialog__surface { background-color: #050505 !important; border: 1px solid #0f0 !important; }
-                `;
-                element.shadowRoot.appendChild(style);
-            }
-        }
-
-        // 4. DETEÇÃO DE ESTADO
+        // EVENTOS DE ESTADO
         document.querySelectorAll('esp-web-install-button').forEach(btn => {
             btn.addEventListener('state-change', (ev) => {
-                if (ev.detail.state === 'SUCCESS') {
-                    term.writeln('\n✅ SUCESSO! Instalação concluída.');
-                }
+                if (ev.detail.state === 'SUCCESS') term.writeln('\n✅ INSTALAÇÃO COMPLETA!');
+                if (ev.detail.state === 'ERROR') term.writeln('\n❌ ERRO.');
             });
         });
 
