@@ -182,7 +182,7 @@ console.log = function (...args) {
     originalConsoleLog.apply(console, args);
 };
 
-/* STATE EVENTS */
+/* STATE EVENTS - hide only used button */
 document.querySelectorAll("esp-web-install-button")
 .forEach(btn => {
 
@@ -197,10 +197,8 @@ document.querySelectorAll("esp-web-install-button")
             term.writeln("Device programmed successfully.");
             term.writeln("You may disconnect the device.");
 
-            // Hide firmware buttons after success
-            document.getElementById("btnC5").style.display="none";
-            document.getElementById("btnC3").style.display="none";
-            document.getElementById("btnS3").style.display="none";
+            // Hide only the button that was used
+            btn.style.display = "none";
         }
 
         if (e.detail.state === "ERROR") {
