@@ -2,229 +2,92 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 Universal Flasher</title>
-
-<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
-
-<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
-<script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
-<script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
+<title>SKLAB404 Pure Flasher</title>
 
 <style>
 body{
     margin:0;
     background:#0b1110;
-    font-family:monospace;
-    overflow:hidden;
     color:#8affc1;
-}
-
-/* SPLASH */
-#splash{
-    position:fixed;
-    width:100%;
-    height:100%;
-    background:#0b1110;
+    font-family:monospace;
     display:flex;
     flex-direction:column;
-    justify-content:center;
     align-items:center;
-    cursor:pointer;
-    z-index:10;
-    transition:0.5s;
-}
-#splash.fade{
-    opacity:0;
-    pointer-events:none;
-}
-
-/* TERMINAL */
-#term{
-    position:fixed;
-    width:100%;
-    height:100%;
-}
-
-/* BUTTON AREA */
-#buttons{
-    position:fixed;
-    bottom:50px;
-    left:50%;
-    transform:translateX(-50%);
-    z-index:1000;
-    display:none;
-}
-
-.cleanBtn{
-    background:transparent !important;
-    color:#8affc1 !important;
-    border:1px solid #8affc1 !important;
-    padding:12px 30px !important;
-    font-size:14px !important;
-    letter-spacing:2px;
-    cursor:pointer !important;
-    margin:5px;
-}
-.cleanBtn:hover{
-    background:#13201c !important;
-}
-
-/* SUCCESS SCREEN */
-#successScreen{
-    position:fixed;
-    inset:0;
-    background:#0b1110;
-    display:none;
     justify-content:center;
-    align-items:center;
-    flex-direction:column;
-    z-index:99999;
-    text-align:center;
+    height:100vh;
 }
 
-#successScreen img{
-    width:180px;
-    margin-bottom:25px;
-}
-
-#successScreen h2{
+button{
+    background:transparent;
+    border:1px solid #8affc1;
     color:#8affc1;
-    letter-spacing:3px;
+    padding:12px 30px;
+    font-size:16px;
+    cursor:pointer;
+    margin-bottom:20px;
+}
+
+#log{
+    width:80%;
+    max-width:800px;
+    height:300px;
+    border:1px solid #8affc1;
+    padding:10px;
+    overflow:auto;
 }
 </style>
 </head>
 <body>
 
-<div id="splash" onclick="enter()">
-    <h1>SKLAB404</h1>
-    <p>Universal ESP Flasher</p>
-</div>
+<button id="connectBtn">CONNECT DEVICE</button>
 
-<div id="term"></div>
+<div id="log"></div>
 
-<div id="buttons">
+<script type="module">
 
-    <esp-web-install-button id="connectBtn" manifest="manifest_c5.json">
-        <button slot="activate" class="cleanBtn">CONNECT DEVICE</button>
-    </esp-web-install-button>
+import { ESPLoader, Transport } from "https://cdn.jsdelivr.net/npm/esptool-js@0.5.2/bundle.js";
 
-    <esp-web-install-button id="btnC5" manifest="manifest_c5.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-C5</button>
-    </esp-web-install-button>
+const logDiv = document.getElementById("log");
 
-    <esp-web-install-button id="btnC3" manifest="manifest_c3.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-C3</button>
-    </esp-web-install-button>
+function log(msg){
+    logDiv.innerHTML += msg + "<br>";
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
 
-    <esp-web-install-button id="btnS3" manifest="manifest_s3.json">
-        <button slot="activate" class="cleanBtn">FLASH ESP32-S3</button>
-    </esp-web-install-button>
+document.getElementById("connectBtn").addEventListener("click", async () => {
 
-</div>
+    try {
 
-<div id="successScreen">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Checkmark_green.svg">
-    <h2>FLASH SUCCESSFUL</h2>
-    <p>Device programmed successfully</p>
-</div>
+        log("Requesting serial port...");
 
-<script>
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
 
-const term = new Terminal({
-    theme:{
-        background:'transparent',
-        foreground:'#8affc1',
-        cursor:'#8affc1'
-    },
-    fontFamily:'Courier New, monospace',
-    fontSize:14,
-    cursorBlink:true
+        log("Port opened.");
+
+        const transport = new Transport(port);
+        const loader = new ESPLoader({
+            transport,
+            baudrate: 115200,
+            terminal: {
+                write: (data) => log(data)
+            }
+        });
+
+        log("Connecting to ESP...");
+
+        const chip = await loader.main();
+
+        log("Connected.");
+        log("Chip detected: " + loader.chipName);
+
+        log("MAC: " + loader.macAddr());
+
+    } catch (err){
+        log("Error: " + err);
+    }
+
 });
-
-const fit = new FitAddon.FitAddon();
-term.loadAddon(fit);
-term.open(document.getElementById('term'));
-fit.fit();
-window.addEventListener('resize',()=>fit.fit());
-
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-async function type(text, delay=30){
-    for(let i=0;i<text.length;i++){
-        term.write(text[i]);
-        await sleep(delay);
-    }
-    term.write("\r\n");
-}
-
-function enter(){
-    document.getElementById("splash").classList.add("fade");
-
-    const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
-    intro.volume = 0.4;
-    intro.play().catch(()=>{});
-
-    setTimeout(startSequence,500);
-}
-
-async function startSequence(){
-    await type("Initializing universal flashing utility...");
-    await sleep(400);
-    await type("Press CONNECT DEVICE to detect ESP...");
-    document.getElementById("buttons").style.display="block";
-
-    document.getElementById("btnC5").style.display="none";
-    document.getElementById("btnC3").style.display="none";
-    document.getElementById("btnS3").style.display="none";
-}
-
-/* CAPTURE LOGS */
-const originalConsoleLog = console.log;
-
-console.log = function (...args) {
-    const msg = args.join(" ");
-
-    if (msg.includes("ESP32-C5")) {
-        term.writeln("\n[DEVICE] ESP32-C5 detected");
-        document.getElementById("btnC5").style.display="inline-block";
-    }
-
-    if (msg.includes("ESP32-C3")) {
-        term.writeln("\n[DEVICE] ESP32-C3 detected");
-        document.getElementById("btnC3").style.display="inline-block";
-    }
-
-    if (msg.includes("ESP32-S3")) {
-        term.writeln("\n[DEVICE] ESP32-S3 detected");
-        document.getElementById("btnS3").style.display="inline-block";
-    }
-
-    if (
-        msg.includes("Writing") ||
-        msg.includes("%") ||
-        msg.includes("Erasing")
-    ) {
-        term.writeln("> " + msg);
-    }
-
-    // FINAL DETECTION
-    if (
-        msg.includes("Hash of data verified") ||
-        msg.includes("Leaving...")
-    ) {
-
-        // REMOVE ALL ESP TOOL COMPONENTS COMPLETELY
-        document.querySelectorAll("esp-web-install-button")
-            .forEach(el => el.remove());
-
-        document.getElementById("buttons").remove();
-        document.getElementById("term").remove();
-
-        document.getElementById("successScreen").style.display="flex";
-    }
-
-    originalConsoleLog.apply(console, args);
-};
 
 </script>
 
