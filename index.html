@@ -2,97 +2,259 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 – C5 Test</title>
+<title>SKLAB404 // Universal Flasher</title>
+
+<script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+
+<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
+<script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
+<script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
+
 <style>
 body{
-    background:#0b1110;
-    color:#8affc1;
+    margin:0;
+    background:#060b09;
     font-family:monospace;
+    overflow:hidden;
+    color:#00ff9d;
+}
+
+/* MATRIX BACKGROUND */
+canvas{
+    position:fixed;
+    top:0;
+    left:0;
+    z-index:0;
+    opacity:0.08;
+}
+
+/* SPLASH */
+#splash{
+    position:fixed;
+    inset:0;
+    background:#060b09;
     display:flex;
     flex-direction:column;
-    align-items:center;
     justify-content:center;
-    height:100vh;
-}
-button{
-    padding:12px 30px;
-    border:1px solid #8affc1;
-    background:transparent;
-    color:#8affc1;
+    align-items:center;
     cursor:pointer;
+    z-index:10;
+    transition:0.6s;
 }
-#log{
-    width:90%;
-    max-width:900px;
-    height:350px;
-    border:1px solid #8affc1;
+#splash h1{
+    font-size:3rem;
+    letter-spacing:6px;
+}
+#splash p{
+    opacity:0.6;
     margin-top:20px;
-    padding:10px;
-    overflow:auto;
+}
+#splash.fade{
+    opacity:0;
+    pointer-events:none;
+}
+
+/* TERMINAL WRAPPER */
+#terminalWrapper{
+    position:fixed;
+    inset:0;
+    padding:40px;
+    z-index:2;
+}
+#term{
+    width:100%;
+    height:100%;
+    border:1px solid #00ff9d33;
+    box-shadow:0 0 40px #00ff9d22;
+}
+
+/* BUTTON AREA */
+#buttons{
+    position:fixed;
+    bottom:40px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:5;
+    display:none;
+}
+
+.cleanBtn{
+    background:transparent !important;
+    color:#00ff9d !important;
+    border:1px solid #00ff9d !important;
+    padding:12px 28px !important;
+    font-size:13px !important;
+    letter-spacing:2px;
+    cursor:pointer !important;
+    margin:5px;
+    transition:0.3s;
+}
+.cleanBtn:hover{
+    background:#003b2a !important;
+    box-shadow:0 0 15px #00ff9d55;
+}
+
+/* SUCCESS */
+#successScreen{
+    position:fixed;
+    inset:0;
+    background:#060b09;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:20;
+    text-align:center;
+}
+#successScreen h2{
+    letter-spacing:4px;
+}
+#successScreen button{
+    margin-top:20px;
+    padding:10px 20px;
+    border:1px solid #00ff9d;
+    background:transparent;
+    color:#00ff9d;
+    cursor:pointer;
 }
 </style>
 </head>
 <body>
 
-<button id="connectBtn">CONNECT ESP32-C5</button>
-<div id="log"></div>
+<canvas id="matrix"></canvas>
 
-<script type="module">
+<div id="splash" onclick="enter()">
+    <h1>SKLAB404</h1>
+    <p>Click to initialize flashing system</p>
+</div>
 
-// 🔥 Usar build mais recente do repositório oficial
-import { ESPLoader, Transport } 
-from "https://rawcdn.githack.com/espressif/esptool-js/master/bundle.js";
+<div id="terminalWrapper">
+    <div id="term"></div>
+</div>
 
-const logDiv = document.getElementById("log");
+<div id="buttons">
 
-function log(msg){
-    logDiv.innerHTML += msg + "<br>";
-    logDiv.scrollTop = logDiv.scrollHeight;
+    <esp-web-install-button manifest="manifest_c5.json">
+        <button slot="activate" class="cleanBtn">CONNECT / FLASH C5</button>
+    </esp-web-install-button>
+
+    <esp-web-install-button manifest="manifest_c3.json">
+        <button slot="activate" class="cleanBtn">FLASH C3</button>
+    </esp-web-install-button>
+
+    <esp-web-install-button manifest="manifest_s3.json">
+        <button slot="activate" class="cleanBtn">FLASH S3</button>
+    </esp-web-install-button>
+
+</div>
+
+<div id="successScreen">
+    <h2>FLASH COMPLETE</h2>
+    <p>Device programmed successfully</p>
+    <button onclick="location.reload()">FLASH ANOTHER</button>
+</div>
+
+<script>
+
+/* MATRIX EFFECT */
+const canvas = document.getElementById("matrix");
+const ctx = canvas.getContext("2d");
+canvas.height = window.innerHeight;
+canvas.width = window.innerWidth;
+const letters = "01SKLAB404";
+const fontSize = 14;
+const columns = canvas.width/fontSize;
+const drops = Array(Math.floor(columns)).fill(1);
+
+function draw(){
+    ctx.fillStyle="rgba(6,11,9,0.1)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="#00ff9d";
+    ctx.font=fontSize+"px monospace";
+    for(let i=0;i<drops.length;i++){
+        const text=letters[Math.floor(Math.random()*letters.length)];
+        ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+        if(drops[i]*fontSize>canvas.height && Math.random()>0.975)
+            drops[i]=0;
+        drops[i]++;
+    }
+}
+setInterval(draw,35);
+
+/* TERMINAL */
+const term = new Terminal({
+    theme:{
+        background:'transparent',
+        foreground:'#00ff9d',
+        cursor:'#00ff9d'
+    },
+    fontFamily:'Courier New',
+    fontSize:14,
+    cursorBlink:true
+});
+
+const fit = new FitAddon.FitAddon();
+term.loadAddon(fit);
+term.open(document.getElementById('term'));
+fit.fit();
+window.addEventListener('resize',()=>fit.fit());
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function type(text, delay=25){
+    for(let i=0;i<text.length;i++){
+        term.write(text[i]);
+        await sleep(delay);
+    }
+    term.write("\r\n");
 }
 
-document.getElementById("connectBtn").addEventListener("click", async () => {
+function enter(){
+    document.getElementById("splash").classList.add("fade");
 
-    let port;
+    const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
+    intro.volume = 0.4;
+    intro.play().catch(()=>{});
 
-    try {
+    setTimeout(startSequence,500);
+}
 
-        log("Requesting serial port...");
-        port = await navigator.serial.requestPort();
+async function startSequence(){
+    await type("Initializing SKLAB404 flashing environment...");
+    await sleep(400);
+    await type("System ready.");
+    await sleep(200);
+    await type("Awaiting device connection...");
+    document.getElementById("buttons").style.display="block";
+}
 
-        await port.open({ baudRate: 115200 });
+/* CAPTURE LOGS */
+const originalConsoleLog = console.log;
 
-        const transport = new Transport(port);
+console.log = function (...args) {
 
-        const loader = new ESPLoader({
-            transport,
-            baudrate: 115200,
-            terminal: {
-                write: (data) => log(data),
-                writeLine: (data) => log(data),
-                clean: () => { logDiv.innerHTML = ""; }
-            }
-        });
+    const msg = args.join(" ");
 
-        log("Connecting to ESP...");
-
-        await loader.main();
-
-        log("Connected!");
-        log("Chip: " + loader.chipName);
-
-        const mac = await loader.readMac();
-        log("MAC: " + mac);
-
-    } catch (err) {
-
-        log("ERROR: " + err);
-
-        if (port) {
-            try { await port.close(); } catch(e){}
-        }
+    if (
+        msg.includes("Writing") ||
+        msg.includes("%") ||
+        msg.includes("Erasing")
+    ) {
+        term.writeln("> " + msg);
     }
 
-});
+    if (
+        msg.includes("Hash of data verified") ||
+        msg.includes("Leaving...")
+    ) {
+        setTimeout(()=>{
+            document.getElementById("successScreen").style.display="flex";
+        },800);
+    }
+
+    originalConsoleLog.apply(console, args);
+};
+
 </script>
 
 </body>
