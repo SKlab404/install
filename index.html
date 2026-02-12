@@ -56,16 +56,11 @@ function log(msg){
 
 document.getElementById("connectBtn").addEventListener("click", async () => {
 
-    let port;
-
     try {
 
         log("Requesting serial port...");
 
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 115200 });
-
-        log("Port opened.");
+        const port = await navigator.serial.requestPort();
 
         const transport = new Transport(port);
 
@@ -75,9 +70,7 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
             terminal: {
                 write: (data) => log(data),
                 writeLine: (data) => log(data),
-                clean: () => {
-                    logDiv.innerHTML = "";
-                }
+                clean: () => { logDiv.innerHTML = ""; }
             }
         });
 
@@ -93,10 +86,6 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 
     } catch (err){
         log("Error: " + err);
-
-        if (port) {
-            try { await port.close(); } catch(e){}
-        }
     }
 
 });
@@ -104,7 +93,9 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
 </script>
 
 
+
 </body>
 </html>
+
 
 
