@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Wizard Flasher</title>
+<title>SKLAB404 // Wizard Pro</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -43,7 +43,7 @@ body{
     height:100vh;
 }
 
-/* SIDEBAR STEPS */
+/* SIDEBAR */
 #steps{
     width:220px;
     background:#060a08;
@@ -58,30 +58,20 @@ body{
 .step.active{
     opacity:1;
 }
-.step span{
-    display:block;
-    margin-top:5px;
-    font-size:0.8rem;
-    opacity:0.6;
-}
 
-/* MAIN AREA */
+/* MAIN */
 #main{
     flex:1;
-    position:relative;
     padding:40px;
 }
 
-/* DEVICE SELECTION */
-#deviceSelection{
-    display:flex;
-    gap:20px;
-}
-
+/* DEVICE CARDS */
 .deviceCard{
     border:1px solid #00ff9d55;
     padding:20px;
     cursor:pointer;
+    display:inline-block;
+    margin-right:15px;
     transition:0.3s;
 }
 .deviceCard:hover{
@@ -94,13 +84,13 @@ body{
 /* TERMINAL */
 #term{
     width:100%;
-    height:60vh;
+    height:45vh;
     background:#000000ee;
     border:1px solid #00ff9d55;
     margin-top:20px;
 }
 
-/* BUTTONS */
+/* BUTTON */
 .actionBtn{
     margin-top:20px;
     padding:10px 20px;
@@ -110,11 +100,25 @@ body{
     cursor:pointer;
 }
 
+/* PROGRESS BAR */
+#progressContainer{
+    width:100%;
+    height:20px;
+    background:#001a12;
+    margin-top:20px;
+    display:none;
+}
+#progressBar{
+    height:100%;
+    width:0%;
+    background:#00ff9d;
+    transition:width 0.2s;
+}
+
 /* SUCCESS */
 #success{
     display:none;
-    text-align:center;
-    margin-top:40px;
+    margin-top:30px;
 }
 </style>
 </head>
@@ -127,51 +131,57 @@ body{
 
 <div id="container">
 
-    <div id="steps">
-        <div class="step active" id="step1">1. Select Device<span>Choose ESP model</span></div>
-        <div class="step" id="step2">2. Flash<span>Connect & Install</span></div>
-        <div class="step" id="step3">3. Done<span>Complete</span></div>
+<div id="steps">
+    <div class="step active" id="step1">1. Select Device</div>
+    <div class="step" id="step2">2. Flash</div>
+    <div class="step" id="step3">3. Done</div>
+</div>
+
+<div id="main">
+
+    <!-- STEP 1 -->
+    <div id="deviceSelection">
+        <div class="deviceCard" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
+        <div class="deviceCard" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
+        <div class="deviceCard" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
     </div>
 
-    <div id="main">
+    <!-- STEP 2 -->
+    <div id="flashSection" style="display:none;">
 
-        <!-- STEP 1 -->
-        <div id="deviceSelection">
-            <div class="deviceCard" onclick="selectDevice('manifest_c5.json', this)">ESP32-C5</div>
-            <div class="deviceCard" onclick="selectDevice('manifest_c3.json', this)">ESP32-C3</div>
-            <div class="deviceCard" onclick="selectDevice('manifest_s3.json', this)">ESP32-S3</div>
+        <label>Baud Rate:</label>
+        <select id="baudSelect">
+            <option value="115200">115200</option>
+            <option value="460800">460800</option>
+            <option value="921600">921600</option>
+        </select>
+
+        <esp-web-install-button id="flashBtn">
+            <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
+        </esp-web-install-button>
+
+        <div id="progressContainer">
+            <div id="progressBar"></div>
         </div>
 
-        <!-- STEP 2 -->
-        <div id="flashSection" style="display:none;">
-
-            <esp-web-install-button id="flashBtn">
-                <button slot="activate" class="actionBtn">CONNECT & FLASH</button>
-            </esp-web-install-button>
-
-            <div id="term"></div>
-
-        </div>
-
-        <!-- STEP 3 -->
-        <div id="success">
-            <h2>FLASH COMPLETE</h2>
-            <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER DEVICE</button>
-        </div>
+        <div id="term"></div>
 
     </div>
 
+    <!-- STEP 3 -->
+    <div id="success">
+        <h2>FLASH COMPLETE</h2>
+        <button class="actionBtn" onclick="location.reload()">FLASH ANOTHER</button>
+    </div>
+
+</div>
 </div>
 
 <script>
 
 /* TERMINAL */
 const term = new Terminal({
-    theme:{
-        background:'transparent',
-        foreground:'#00ff9d',
-        cursor:'#00ff9d'
-    },
+    theme:{background:'transparent',foreground:'#00ff9d',cursor:'#00ff9d'},
     fontSize:15,
     cursorBlink:true
 });
@@ -188,13 +198,10 @@ function enter(){
     document.getElementById("splash").classList.add("fade");
 }
 
-/* DEVICE SELECTION */
-function selectDevice(manifest, element){
-
-    document.querySelectorAll(".deviceCard")
-        .forEach(el => el.classList.remove("selected"));
-
-    element.classList.add("selected");
+/* DEVICE SELECT */
+function selectDevice(manifest, el){
+    document.querySelectorAll(".deviceCard").forEach(e=>e.classList.remove("selected"));
+    el.classList.add("selected");
 
     const btn = document.getElementById("flashBtn");
     btn.setAttribute("manifest", manifest);
@@ -206,42 +213,36 @@ function selectDevice(manifest, element){
     document.getElementById("step2").classList.add("active");
 }
 
-/* LOG CAPTURE */
+/* PROGRESS + LOG */
 const originalConsoleLog = console.log;
 
-console.log = function (...args) {
+console.log = function (...args){
 
     const msg = args.join(" ");
 
-    if (
-        msg.includes("Writing") ||
-        msg.includes("%") ||
-        msg.includes("Erasing")
-    ) {
-        term.writeln("> " + msg);
-    }
-
-    if (
-        msg.includes("ESP32-C5") ||
-        msg.includes("ESP32-C3") ||
-        msg.includes("ESP32-S3")
-    ) {
+    if(msg.includes("ESP32")){
         term.writeln("[DEVICE] " + msg);
     }
 
-    if (
-        msg.includes("Hash of data verified") ||
-        msg.includes("Leaving...")
-    ) {
+    if(msg.includes("Writing") || msg.includes("%")){
+        term.writeln("> " + msg);
+
+        const match = msg.match(/(\d+)%/);
+        if(match){
+            document.getElementById("progressContainer").style.display="block";
+            document.getElementById("progressBar").style.width = match[1] + "%";
+        }
+    }
+
+    if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
         document.getElementById("step2").classList.remove("active");
         document.getElementById("step3").classList.add("active");
         document.getElementById("success").style.display="block";
     }
 
-    originalConsoleLog.apply(console, args);
+    originalConsoleLog.apply(console,args);
 };
 
 </script>
-
 </body>
 </html>
