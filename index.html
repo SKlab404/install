@@ -2,141 +2,181 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Professional Flasher</title>
+<title>SKLAB404 // Hybrid Interface</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
-<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
+<link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css"/>
 <script src="https://unpkg.com/xterm@4.19.0/lib/xterm.js"></script>
 <script src="https://unpkg.com/xterm-addon-fit@0.5.0/lib/xterm-addon-fit.js"></script>
 
 <style>
+:root{
+    --bg:#0b0f14;
+    --panel:#111821;
+    --accent:#00f5c4;
+    --text:#d6faff;
+    --border:#1f2a36;
+}
+
+.light{
+    --bg:#f4f7fa;
+    --panel:#ffffff;
+    --accent:#0066ff;
+    --text:#111;
+    --border:#d0d7e2;
+}
+
 body{
     margin:0;
-    background:#0c1311;
-    font-family:monospace;
-    color:#00ff9d;
+    background:var(--bg);
+    color:var(--text);
+    font-family:system-ui,monospace;
+    transition:0.3s;
 }
 
 header{
-    padding:20px 40px;
-    border-bottom:1px solid #00ff9d22;
     display:flex;
     justify-content:space-between;
     align-items:center;
+    padding:20px 40px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel);
 }
 
-#main{
+#container{
     display:flex;
-    padding:40px;
-    gap:40px;
+    height:calc(100vh - 80px);
 }
 
-/* LEFT PANEL */
-#config{
+#sidebar{
     width:300px;
+    background:var(--panel);
+    border-right:1px solid var(--border);
+    padding:30px;
+    box-sizing:border-box;
 }
 
-.card{
-    border:1px solid #00ff9d33;
-    padding:20px;
-    margin-bottom:20px;
-}
-
-select, input{
-    width:100%;
-    background:#001a12;
-    color:#00ff9d;
-    border:1px solid #00ff9d22;
-    padding:6px;
-    margin-top:8px;
-}
-
-/* FLASH AREA */
-#flashArea{
+#terminalArea{
     flex:1;
+    padding:30px;
+    box-sizing:border-box;
 }
 
-#term{
+.section{
+    margin-bottom:25px;
+}
+
+h3{
+    margin:0 0 10px 0;
+    font-weight:600;
+    font-size:14px;
+    opacity:0.8;
+}
+
+select, button{
     width:100%;
-    height:350px;
-    background:#000000ee;
-    border:1px solid #00ff9d55;
+    padding:8px;
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--border);
+    margin-top:5px;
+    cursor:pointer;
+}
+
+button:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+}
+
+.modeToggle{
+    display:flex;
+    gap:10px;
+}
+
+.modeBtn.active{
+    border-color:var(--accent);
+    color:var(--accent);
 }
 
 #progressContainer{
     width:100%;
-    height:20px;
-    background:#001a12;
-    margin-top:10px;
+    height:8px;
+    background:var(--border);
+    margin-top:15px;
     display:none;
 }
 
 #progressBar{
     height:100%;
     width:0%;
-    background:#00ff9d;
-    transition:width 0.2s;
+    background:var(--accent);
+    transition:0.2s;
 }
 
-button{
-    margin-top:10px;
-    padding:8px 15px;
-    background:transparent;
-    border:1px solid #00ff9d;
-    color:#00ff9d;
-    cursor:pointer;
+#term{
+    margin-top:20px;
+    height:70%;
+    border:1px solid var(--border);
 }
 
-#status{
+.status{
     margin-top:10px;
-    font-size:0.9rem;
-    opacity:0.8;
+    font-size:13px;
+    opacity:0.7;
 }
 </style>
 </head>
 <body>
 
 <header>
-    <h2>SKLAB404 Professional Flasher</h2>
-    <div id="status">Idle</div>
+<div>SKLAB404 // Hybrid Flasher</div>
+<div>
+<button onclick="toggleTheme()">Toggle Theme</button>
+</div>
 </header>
 
-<div id="main">
+<div id="container">
 
-<!-- CONFIG PANEL -->
-<div id="config">
+<div id="sidebar">
 
-<div class="card">
-<label>Device Firmware</label>
+<div class="section">
+<h3>Mode</h3>
+<div class="modeToggle">
+<button class="modeBtn active" onclick="setMode('standard')" id="stdBtn">Standard</button>
+<button class="modeBtn" onclick="setMode('expert')" id="expBtn">Expert</button>
+</div>
+</div>
+
+<div class="section" id="standardSection">
+<h3>Firmware</h3>
 <select id="firmwareSelect">
 <option value="manifest_c5.json">ESP32-C5</option>
 <option value="manifest_c3.json">ESP32-C3</option>
 <option value="manifest_s3.json">ESP32-S3</option>
 </select>
+
+<esp-web-install-button id="flashBtn"></esp-web-install-button>
 </div>
 
-<div class="card">
-<label>Baud Rate</label>
-<select id="baudSelect">
-<option value="115200">115200</option>
-<option value="460800">460800</option>
-<option value="921600">921600</option>
-</select>
+<div class="section" id="expertSection" style="display:none;">
+<h3>Expert Mode</h3>
+<p style="font-size:12px;opacity:0.6;">
+Upload bins and flash manually (C5 experimental).
+</p>
+<button disabled>Expert Engine Loading...</button>
 </div>
 
-<div class="card">
+<div class="section">
+<h3>Controls</h3>
 <button onclick="forceReset()">Force Reset</button>
 </div>
 
 </div>
 
-<!-- FLASH AREA -->
-<div id="flashArea">
+<div id="terminalArea">
 
-<div id="flashContainer">
-<esp-web-install-button id="flashBtn"></esp-web-install-button>
-</div>
+<div class="status" id="status">Idle</div>
 
 <div id="progressContainer">
 <div id="progressBar"></div>
@@ -150,90 +190,86 @@ button{
 
 <script>
 
-let lastActivity = Date.now();
-let watchdog = null;
-
 /* TERMINAL */
 const term = new Terminal({
-theme:{background:'transparent',foreground:'#00ff9d',cursor:'#00ff9d'},
+theme:{background:'transparent',foreground:'#00ffcc'},
 fontSize:14,
 cursorBlink:true
 });
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
-term.open(document.getElementById('term'));
+term.open(document.getElementById("term"));
 fit.fit();
 
-/* APPLY FIRMWARE SELECTION */
-document.getElementById("firmwareSelect").addEventListener("change", e=>{
-document.getElementById("flashBtn").setAttribute("manifest", e.target.value);
-});
-
-/* INIT DEFAULT */
+/* DEFAULT MANIFEST */
 document.getElementById("flashBtn").setAttribute(
 "manifest",
 document.getElementById("firmwareSelect").value
 );
 
-/* WATCHDOG */
-function startWatchdog(){
-clearInterval(watchdog);
-watchdog = setInterval(()=>{
-if(Date.now() - lastActivity > 20000){
-term.writeln("\n⚠ Flash stalled. Resetting...");
-forceReset();
+document.getElementById("firmwareSelect").addEventListener("change",e=>{
+document.getElementById("flashBtn").setAttribute("manifest",e.target.value);
+});
+
+/* MODE SWITCH */
+function setMode(mode){
+document.getElementById("stdBtn").classList.remove("active");
+document.getElementById("expBtn").classList.remove("active");
+
+if(mode==="standard"){
+document.getElementById("stdBtn").classList.add("active");
+document.getElementById("standardSection").style.display="block";
+document.getElementById("expertSection").style.display="none";
+}else{
+document.getElementById("expBtn").classList.add("active");
+document.getElementById("standardSection").style.display="none";
+document.getElementById("expertSection").style.display="block";
 }
-},5000);
 }
 
-function stopWatchdog(){
-clearInterval(watchdog);
+/* THEME */
+function toggleTheme(){
+document.body.classList.toggle("light");
 }
 
-/* FORCE RESET */
+/* RESET */
 function forceReset(){
-stopWatchdog();
-const container = document.getElementById("flashContainer");
-const old = document.getElementById("flashBtn");
-const clone = old.cloneNode(true);
-container.innerHTML="";
-container.appendChild(clone);
+const container=document.getElementById("standardSection");
+const old=document.getElementById("flashBtn");
+const clone=old.cloneNode(true);
+old.replaceWith(clone);
 document.getElementById("progressBar").style.width="0%";
 document.getElementById("progressContainer").style.display="none";
-document.getElementById("status").innerText="Reset complete";
+term.writeln("\nReset complete.");
 }
 
 /* LOG CAPTURE */
-const originalConsoleLog = console.log;
+const originalConsoleLog=console.log;
 
-console.log = function (...args){
+console.log=function(...args){
 
-const msg = args.join(" ");
-lastActivity = Date.now();
+const msg=args.join(" ");
 
 if(msg.includes("ESP32")){
-term.writeln("[DEVICE] " + msg);
-document.getElementById("status").innerText = msg;
+term.writeln("[DEVICE] "+msg);
+document.getElementById("status").innerText=msg;
 }
 
-if(msg.includes("Writing") || msg.includes("%")){
-term.writeln("> " + msg);
-
-const match = msg.match(/(\d+)%/);
+if(msg.includes("%")){
+const match=msg.match(/(\d+)%/);
 if(match){
 document.getElementById("progressContainer").style.display="block";
-document.getElementById("progressBar").style.width = match[1] + "%";
+document.getElementById("progressBar").style.width=match[1]+"%";
 }
+term.writeln("> "+msg);
 }
 
 if(msg.includes("Connecting")){
 document.getElementById("status").innerText="Connecting...";
-startWatchdog();
 }
 
-if(msg.includes("Hash of data verified") || msg.includes("Leaving...")){
-stopWatchdog();
-document.getElementById("status").innerText="Flash complete";
+if(msg.includes("Hash of data verified")||msg.includes("Leaving...")){
+document.getElementById("status").innerText="Flash Complete";
 }
 
 originalConsoleLog.apply(console,args);
