@@ -72,14 +72,13 @@ body{
 /* SUCCESS SCREEN */
 #successScreen{
     position:fixed;
-    width:100%;
-    height:100%;
+    inset:0;
     background:#0b1110;
     display:none;
     justify-content:center;
     align-items:center;
     flex-direction:column;
-    z-index:2000;
+    z-index:99999;
     text-align:center;
 }
 
@@ -92,24 +91,17 @@ body{
     color:#8affc1;
     letter-spacing:3px;
 }
-
-#successScreen p{
-    opacity:0.7;
-}
 </style>
 </head>
 <body>
 
-<!-- SPLASH -->
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
     <p>Universal ESP Flasher</p>
 </div>
 
-<!-- TERMINAL -->
 <div id="term"></div>
 
-<!-- BUTTONS -->
 <div id="buttons">
 
     <esp-web-install-button id="connectBtn" manifest="manifest_c5.json">
@@ -130,9 +122,7 @@ body{
 
 </div>
 
-<!-- SUCCESS SCREEN -->
 <div id="successScreen">
-    <!-- Logo teste -->
     <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Checkmark_green.svg">
     <h2>FLASH SUCCESSFUL</h2>
     <p>Device programmed successfully</p>
@@ -168,7 +158,6 @@ async function type(text, delay=30){
 }
 
 function enter(){
-
     document.getElementById("splash").classList.add("fade");
 
     const intro = new Audio("https://raw.githubusercontent.com/SKlab404/install/Lab4041/UnattendedWinstall/intro.mp3");
@@ -179,7 +168,6 @@ function enter(){
 }
 
 async function startSequence(){
-
     await type("Initializing universal flashing utility...");
     await sleep(400);
     await type("Press CONNECT DEVICE to detect ESP...");
@@ -196,7 +184,6 @@ const originalConsoleLog = console.log;
 console.log = function (...args) {
     const msg = args.join(" ");
 
-    // Detectar modelo
     if (msg.includes("ESP32-C5")) {
         term.writeln("\n[DEVICE] ESP32-C5 detected");
         document.getElementById("btnC5").style.display="inline-block";
@@ -212,7 +199,6 @@ console.log = function (...args) {
         document.getElementById("btnS3").style.display="inline-block";
     }
 
-    // Progresso real
     if (
         msg.includes("Writing") ||
         msg.includes("%") ||
@@ -221,52 +207,26 @@ console.log = function (...args) {
         term.writeln("> " + msg);
     }
 
-    // 🔥 DETETAR FIM REAL DO FLASH
+    // FINAL DETECTION
     if (
         msg.includes("Hash of data verified") ||
         msg.includes("Leaving...")
     ) {
 
-        document.getElementById("buttons").style.display="none";
+        // REMOVE ALL ESP TOOL COMPONENTS COMPLETELY
+        document.querySelectorAll("esp-web-install-button")
+            .forEach(el => el.remove());
+
+        document.getElementById("buttons").remove();
+        document.getElementById("term").remove();
+
         document.getElementById("successScreen").style.display="flex";
     }
 
     originalConsoleLog.apply(console, args);
 };
 
-
-/* STATE EVENTS */
-document.querySelectorAll("esp-web-install-button")
-.forEach(btn => {
-
-    btn.addEventListener("state-change", (e) => {
-
-        if (e.detail.state === "INSTALLING") {
-            term.writeln("\n> Flashing firmware...");
-        }
-
-        if (e.detail.state === "SUCCESS") {
-
-            // Hide firmware buttons
-            document.getElementById("btnC5").style.display="none";
-            document.getElementById("btnC3").style.display="none";
-            document.getElementById("btnS3").style.display="none";
-            document.getElementById("buttons").style.display="none";
-
-            // Show success screen
-            document.getElementById("successScreen").style.display="flex";
-        }
-
-        if (e.detail.state === "ERROR") {
-            term.writeln("\n✗ " + e.detail.error);
-        }
-
-    });
-
-});
-
 </script>
 
 </body>
 </html>
-
