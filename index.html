@@ -19,6 +19,7 @@ body{
     color:#8affc1;
 }
 
+/* SPLASH */
 #splash{
     position:fixed;
     width:100%;
@@ -37,12 +38,14 @@ body{
     pointer-events:none;
 }
 
+/* TERMINAL */
 #term{
     position:fixed;
     width:100%;
     height:100%;
 }
 
+/* BUTTON AREA */
 #buttons{
     position:fixed;
     bottom:50px;
@@ -65,25 +68,54 @@ body{
 .cleanBtn:hover{
     background:#13201c !important;
 }
+
+/* SUCCESS SCREEN */
+#successScreen{
+    position:fixed;
+    width:100%;
+    height:100%;
+    background:#0b1110;
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:2000;
+    text-align:center;
+}
+
+#successScreen img{
+    width:180px;
+    margin-bottom:25px;
+}
+
+#successScreen h2{
+    color:#8affc1;
+    letter-spacing:3px;
+}
+
+#successScreen p{
+    opacity:0.7;
+}
 </style>
 </head>
 <body>
 
+<!-- SPLASH -->
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
     <p>Universal ESP Flasher</p>
 </div>
 
+<!-- TERMINAL -->
 <div id="term"></div>
 
+<!-- BUTTONS -->
 <div id="buttons">
 
-    <!-- CONNECT -->
     <esp-web-install-button id="connectBtn" manifest="manifest_c5.json">
         <button slot="activate" class="cleanBtn">CONNECT DEVICE</button>
     </esp-web-install-button>
 
-    <!-- FIRMWARES -->
     <esp-web-install-button id="btnC5" manifest="manifest_c5.json">
         <button slot="activate" class="cleanBtn">FLASH ESP32-C5</button>
     </esp-web-install-button>
@@ -96,6 +128,14 @@ body{
         <button slot="activate" class="cleanBtn">FLASH ESP32-S3</button>
     </esp-web-install-button>
 
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div id="successScreen">
+    <!-- Logo teste -->
+    <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Checkmark_green.svg">
+    <h2>FLASH SUCCESSFUL</h2>
+    <p>Device programmed successfully</p>
 </div>
 
 <script>
@@ -182,7 +222,7 @@ console.log = function (...args) {
     originalConsoleLog.apply(console, args);
 };
 
-/* STATE EVENTS - hide only used button */
+/* STATE EVENTS */
 document.querySelectorAll("esp-web-install-button")
 .forEach(btn => {
 
@@ -193,12 +233,15 @@ document.querySelectorAll("esp-web-install-button")
         }
 
         if (e.detail.state === "SUCCESS") {
-            term.writeln("\n✓ Flash complete");
-            term.writeln("Device programmed successfully.");
-            term.writeln("You may disconnect the device.");
 
-            // Hide only the button that was used
-            btn.style.display = "none";
+            // Hide firmware buttons
+            document.getElementById("btnC5").style.display="none";
+            document.getElementById("btnC3").style.display="none";
+            document.getElementById("btnS3").style.display="none";
+            document.getElementById("buttons").style.display="none";
+
+            // Show success screen
+            document.getElementById("successScreen").style.display="flex";
         }
 
         if (e.detail.state === "ERROR") {
