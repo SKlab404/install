@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<title>SKLAB404 // Universal Flasher</title>
+<title>SKLAB404 // Secure Flasher</title>
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 
@@ -13,83 +13,54 @@
 <style>
 body{
     margin:0;
-    background:#050807;
+    background:#070b09;
     font-family:monospace;
     overflow:hidden;
     color:#00ff9d;
-}
-
-/* MATRIX BACKGROUND */
-canvas{
-    position:fixed;
-    top:0;
-    left:0;
-    z-index:0;
-    opacity:0.04; /* 🔥 mais discreto */
 }
 
 /* SPLASH */
 #splash{
     position:fixed;
     inset:0;
-    background:#050807;
+    background:#070b09;
     display:flex;
     flex-direction:column;
     justify-content:center;
     align-items:center;
     cursor:pointer;
     z-index:10;
-    transition:0.6s;
+    transition:0.5s;
 }
-
 #splash h1{
-    font-size:3rem;
-    letter-spacing:6px;
-    animation: glitch 1.5s infinite;
+    font-size:2.8rem;
+    letter-spacing:5px;
 }
-
-@keyframes glitch{
-    0%{text-shadow:2px 0 red;}
-    20%{text-shadow:-2px 0 cyan;}
-    40%{text-shadow:2px 0 lime;}
-    60%{text-shadow:-2px 0 cyan;}
-    80%{text-shadow:2px 0 red;}
-    100%{text-shadow:none;}
-}
-
-#splash p{
-    opacity:0.5;
-    margin-top:20px;
-}
-
 #splash.fade{
     opacity:0;
     pointer-events:none;
 }
 
 /* TERMINAL */
-#terminalWrapper{
+#wrapper{
     position:fixed;
     inset:0;
     padding:40px;
-    z-index:2;
 }
-
 #term{
     width:100%;
     height:100%;
-    background:#000000dd; /* 🔥 fundo mais sólido */
+    background:#000000ee;
     border:1px solid #00ff9d55;
-    box-shadow:0 0 40px #00ff9d33;
+    box-shadow:0 0 40px #00ff9d22;
 }
 
-/* BUTTON AREA */
+/* BUTTONS */
 #buttons{
     position:fixed;
     bottom:40px;
     left:50%;
     transform:translateX(-50%);
-    z-index:5;
     display:none;
 }
 
@@ -97,8 +68,8 @@ canvas{
     background:transparent !important;
     color:#00ff9d !important;
     border:1px solid #00ff9d !important;
-    padding:12px 28px !important;
-    font-size:13px !important;
+    padding:12px 30px !important;
+    font-size:14px !important;
     letter-spacing:2px;
     cursor:pointer !important;
     margin:5px;
@@ -106,7 +77,6 @@ canvas{
 }
 .cleanBtn:hover{
     background:#003b2a !important;
-    box-shadow:0 0 15px #00ff9d55;
 }
 
 /* SUCCESS */
@@ -120,15 +90,10 @@ canvas{
     flex-direction:column;
     z-index:20;
     text-align:center;
-    animation: fadeIn 1s;
-}
-@keyframes fadeIn{
-    from{opacity:0;}
-    to{opacity:1;}
 }
 #successScreen h2{
-    letter-spacing:4px;
     font-size:2rem;
+    letter-spacing:4px;
 }
 #successScreen button{
     margin-top:20px;
@@ -142,29 +107,27 @@ canvas{
 </head>
 <body>
 
-<canvas id="matrix"></canvas>
-
 <div id="splash" onclick="enter()">
     <h1>SKLAB404</h1>
-    <p>Click to initialize system</p>
+    <p>Click to initialize flashing system</p>
 </div>
 
-<div id="terminalWrapper">
+<div id="wrapper">
     <div id="term"></div>
 </div>
 
 <div id="buttons">
 
     <esp-web-install-button manifest="manifest_c5.json">
-        <button slot="activate" class="cleanBtn">CONNECT / FLASH C5</button>
+        <button slot="activate" class="cleanBtn">FLASH ESP32-C5</button>
     </esp-web-install-button>
 
     <esp-web-install-button manifest="manifest_c3.json">
-        <button slot="activate" class="cleanBtn">FLASH C3</button>
+        <button slot="activate" class="cleanBtn">FLASH ESP32-C3</button>
     </esp-web-install-button>
 
     <esp-web-install-button manifest="manifest_s3.json">
-        <button slot="activate" class="cleanBtn">FLASH S3</button>
+        <button slot="activate" class="cleanBtn">FLASH ESP32-S3</button>
     </esp-web-install-button>
 
 </div>
@@ -177,31 +140,6 @@ canvas{
 
 <script>
 
-/* MATRIX EFFECT */
-const canvas = document.getElementById("matrix");
-const ctx = canvas.getContext("2d");
-canvas.height = window.innerHeight;
-canvas.width = window.innerWidth;
-const letters = "01";
-const fontSize = 16;
-const columns = canvas.width/fontSize;
-const drops = Array(Math.floor(columns)).fill(1);
-
-function draw(){
-    ctx.fillStyle="rgba(5,8,7,0.1)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="#00ff9d";
-    ctx.font=fontSize+"px monospace";
-    for(let i=0;i<drops.length;i++){
-        const text=letters[Math.floor(Math.random()*letters.length)];
-        ctx.fillText(text,i*fontSize,drops[i]*fontSize);
-        if(drops[i]*fontSize>canvas.height && Math.random()>0.98)
-            drops[i]=0;
-        drops[i]++;
-    }
-}
-setInterval(draw,40);
-
 /* TERMINAL */
 const term = new Terminal({
     theme:{
@@ -209,32 +147,26 @@ const term = new Terminal({
         foreground:'#00ff9d',
         cursor:'#00ff9d'
     },
-    fontFamily:'Courier New',
-    fontSize:15, /* 🔥 maior */
+    fontSize:15,
     cursorBlink:true
 });
-
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
 term.open(document.getElementById('term'));
 fit.fit();
 window.addEventListener('resize',()=>fit.fit());
 
-/* TYPE SOUND */
-const keySound = new Audio("https://actions.google.com/sounds/v1/keyboard/keyboard_click.ogg");
-
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-async function type(text, delay=20){
+async function type(text, delay=25){
     for(let i=0;i<text.length;i++){
         term.write(text[i]);
-        keySound.currentTime = 0;
-        keySound.play().catch(()=>{});
         await sleep(delay);
     }
     term.write("\r\n");
 }
 
+/* INTRO */
 function enter(){
     document.getElementById("splash").classList.add("fade");
 
@@ -246,40 +178,45 @@ function enter(){
 }
 
 async function startSequence(){
-    await type("Booting SKLAB404 secure flashing environment...");
+    await type("Initializing secure flashing environment...");
     await sleep(300);
-    await type("System integrity: OK");
+    await type("Checking firmware integrity...");
     await sleep(300);
-    await type("Awaiting device connection...");
+    await type("System ready.");
+    await sleep(300);
+    await type("Select device firmware to begin.");
     document.getElementById("buttons").style.display="block";
 }
 
-/* CAPTURE LOGS */
-const originalConsoleLog = console.log;
+/* PROGRESS VIA STATE-CHANGE */
+document.querySelectorAll("esp-web-install-button")
+.forEach(btn => {
 
-console.log = function (...args) {
+    btn.addEventListener("state-change", (e) => {
 
-    const msg = args.join(" ");
+        if (e.detail.state === "INSTALLING") {
+            term.writeln("\n> Flashing started...");
+        }
 
-    if (
-        msg.includes("Writing") ||
-        msg.includes("%") ||
-        msg.includes("Erasing")
-    ) {
-        term.writeln("\x1b[1;32m> " + msg + "\x1b[0m"); // 🔥 verde forte
-    }
+        if (typeof e.detail.progress === "number") {
+            const percent = Math.round(e.detail.progress * 100);
+            term.writeln(`\x1b[1;32m[ ${percent}% ]\x1b[0m`);
+        }
 
-    if (
-        msg.includes("Hash of data verified") ||
-        msg.includes("Leaving...")
-    ) {
-        setTimeout(()=>{
-            document.getElementById("successScreen").style.display="flex";
-        },800);
-    }
+        if (e.detail.state === "SUCCESS") {
+            term.writeln("\n✓ FLASH SUCCESSFUL");
+            setTimeout(()=>{
+                document.getElementById("successScreen").style.display="flex";
+            },600);
+        }
 
-    originalConsoleLog.apply(console, args);
-};
+        if (e.detail.state === "ERROR") {
+            term.writeln("\n✗ ERROR: " + e.detail.error);
+        }
+
+    });
+
+});
 
 </script>
 
