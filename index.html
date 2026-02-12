@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>SKLAB404 V51</title>
+    <title>SKLAB404 V53 - AUTO INTRO</title>
     
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <link rel="stylesheet" href="https://unpkg.com/xterm@4.19.0/css/xterm.css" />
@@ -12,18 +12,9 @@
     <style>
         body { background: #000; color: #0f0; font-family: monospace; display: flex; flex-direction: column; height: 100vh; margin: 0; }
         #controls { padding: 20px; background: #111; text-align: center; border-bottom: 1px solid #333; }
-        
-        esp-web-install-button {
-            --esp-tools-card-background-color: transparent !important;
-            --esp-tools-card-border-color: transparent !important;
-        }
-        esp-web-install-button button {
-            background: #004400 !important; color: #fff !important; 
-            border: 2px solid #0f0 !important; padding: 15px 30px !important;
-            font-weight: bold !important; cursor: pointer !important;
-            font-family: monospace !important; 
-        }
-
+        esp-web-install-button button { background: #004400 !important; color: #fff !important; border: 2px solid #0f0 !important; padding: 15px 30px !important; font-weight: bold !important; cursor: pointer !important; font-family: monospace !important; }
+        esp-web-install-button button:hover { background: #006600 !important; box-shadow: 0 0 15px #0f0 !important; }
+        esp-web-install-button { --esp-tools-card-background-color: transparent !important; --esp-tools-card-border-color: transparent !important; }
         #term { flex: 1; padding: 10px; }
     </style>
 </head>
@@ -33,11 +24,9 @@
         <esp-web-install-button manifest="manifest_c5.json">
             <button slot="activate">C5</button>
         </esp-web-install-button>
-
         <esp-web-install-button manifest="manifest_std.json">
             <button slot="activate">STD</button>
         </esp-web-install-button>
-
         <esp-web-install-button manifest="manifest_bruce.json">
             <button slot="activate" style="border-color:#f55 !important;">BRUCE</button>
         </esp-web-install-button>
@@ -52,39 +41,58 @@
         term.open(document.getElementById('term'));
         fit.fit();
 
-        term.writeln('V51 - CLASSIC');
-        term.writeln('> Click em qualquer lugar para intro.mp3\n');
+        term.writeln('V53 - INTRO AUTO');
+        term.writeln('> Tentando intro.mp3...\n');
 
-        // ÁUDIO - EXATO DAS PRIMEIRAS VERSÕES + 1 CLICK
-        let audioUnlocked = false;
-        const introAudio = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
-        introAudio.volume = 0.5;
+        // TRUQUE 1: Preload + play imediato
+        const intro1 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
+        intro1.preload = 'auto';
+        intro1.volume = 0.5;
+        intro1.play();
 
-        document.addEventListener('click', () => {
-            if (!audioUnlocked) {
-                introAudio.play();
-                audioUnlocked = true;
-                term.writeln('\x1b[1;32m> intro.mp3 tocando!\x1b[0m');
-            }
-        }, { once: true });
+        // TRUQUE 2: Múltiplas tentativas
+        setTimeout(() => {
+            const intro2 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
+            intro2.volume = 0.5;
+            intro2.play().then(() => term.writeln('✓ Intro1')).catch(() => term.writeln('> Intro1 blocked'));
+        }, 100);
 
-        // LOGS
+        setTimeout(() => {
+            const intro3 = new Audio("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3");
+            intro3.volume = 0.5;
+            intro3.play().then(() => term.writeln('✓ Intro2')).catch(() => {});
+        }, 300);
+
+        // TRUQUE 3: Web Audio bypass (mais potente)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        fetch("https://github.com/SKlab404/install/raw/Lab4041/UnattendedWinstall/intro.mp3")
+            .then(r => r.arrayBuffer())
+            .then(ArrayBuffer => audioCtx.decodeAudioData(ArrayBuffer))
+            .then(decodedData => {
+                const source = audioCtx.createBufferSource();
+                source.buffer = decodedData;
+                source.connect(audioCtx.destination);
+                source.start();
+                term.writeln('\x1b[1;32m✓ WebAudio intro!\x1b[0m');
+            })
+            .catch(() => term.writeln('> WebAudio fail'));
+
+        // LOGS + SUCESSO
         console.log = (...args) => {
             const msg = args.join(' ');
-            if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('Connected') || msg.includes('%')) {
+            if (msg.includes('Writing') || msg.includes('Erasing') || msg.includes('%')) {
                 term.writeln(`> ${msg}`);
             }
         };
 
-        // SUCESSO
         document.querySelectorAll('esp-web-install-button').forEach(b => {
             b.addEventListener('state-change', (e) => {
                 const name = b.querySelector('button').textContent;
                 if (e.detail.state === 'INSTALLING') term.writeln(`\n>>> ${name}`);
                 else if (e.detail.state === 'SUCCESS') term.writeln('\n\x1b[1;32m✓ SUCESSO!\x1b[0m');
                 else if (e.detail.state === 'ERROR') {
-                    if (e.detail.error && e.detail.error.includes('Improv')) {
-                        term.writeln('\n\x1b[1;32m✓ SUCESSO! (Wi-Fi skip)\x1b[0m');
+                    if (e.detail.error.includes('Improv')) {
+                        term.writeln('\n\x1b[1;32m✓ SUCESSO! (skip)\x1b[0m');
                     } else {
                         term.writeln(`\n\x1b[1;31m✗ ${e.detail.error}\x1b[0m`);
                     }
